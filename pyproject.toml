@@ -1,0 +1,87 @@
+[project]
+name = "Kniga sodrunikov"
+version = "1.0.0"
+description = "Бекэнд для веб-сайта проекта"
+requires-python = ">=3.12"
+dynamic = ["dependencies", "classifiers"]
+authors = []
+readme = "README.md"
+
+
+[tool.pytest.ini_options]
+addopts = "-v --tb=short"
+testpaths = ["backend/tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+exclude = [
+    "backend/tests/",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "Q", "D"]
+ignore = [
+    "A005",   # allow to shadow stdlib and builtin module names
+    "COM812", # trailing comma, conflicts with `ruff format`
+    # Different doc rules that we don't really care about:
+    "D100",
+    "D101",
+    "D102",
+    "D104",
+    "D106",
+    "D203",
+    "D212",
+    "D401",
+    "D404",
+    "D405",
+    "ISC001",  # implicit string concat conflicts with `ruff format`
+    "ISC003",  # prefer explicit string concat over implicit concat
+    "PLR09",   # we have our own complexity rules
+    "PLR2004", # do not report magic numbers
+    "PLR6301", # do not require classmethod / staticmethod when self not used
+    "TRY003",  # long exception messages from `tryceratops`
+]
+
+# Plugin configs:
+flake8-quotes.inline-quotes = "single"
+
+[tool.ruff.lint.per-file-ignores]
+"*/migrations/*.py" = ["D101", "E501", "RUF012", "Q000"]
+"tests/*.py" = ["S101"]
+"*/models.py" = ["D105"]
+
+[tool.ruff.format]
+quote-style = "single"
+docstring-code-format = true
+skip-magic-trailing-comma = false
+exclude = []
+
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+# Coverage
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/settings/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
