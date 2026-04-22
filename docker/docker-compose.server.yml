@@ -1,0 +1,80 @@
+---
+# This compose-file is production only. So, it should not be called directly.
+#
+# Instead, it should be a part of your deployment strategy.
+# This setup is supposed to be used with `docker-swarm`.
+# See `./docs/pages/template/production.rst` docs.
+
+x-common-web-params: &common-web
+  image: employeebook:dev
+  volumes:
+    - django-media:/var/www/django/media
+  expose:
+    - 8000
+  restart: unless-stopped
+
+services:
+  caddy:
+    build:
+      context: .
+      dockerfile: ./docker/caddy/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./docker/caddy/ci.sh:/etc/ci.sh  # test script
+      - caddy-config:/config  # configuration autosaves
+      - caddy-data:/data  # saving certificates
+      - django-static:/var/www/django/static  # statics
+      - django-media:/var/www/django/media  # media
+      - ~/frontend/dist:/var/www/frontend  # frontend
+    networks:
+      - proxy-net
+    ports:
+      - "80:80"
+      - "443:443"
+
+  web:
+    <<: *common-web
+    build:
+      target: production_build
+      context: .
+      dockerfile: ./docker/django/Dockerfile
+      args:
+        DJANGO_ENV: production
+    restart: unless-stopped
+    command: bash ./docker/django/gunicorn.sh
+    networks:
+      - proxy-net
+
+  dozzle:
+    image: amir20/dozzle:latest
+    expose:
+      - 8080
+    networks:
+      - proxy-net
+    environment:
+      - DOZZLE_BASE=/dozzle
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+
+#  celery_worker:
+#    <<: *common-web
+#
+#  celery_beat:
+#    <<: *common-web
+
+
+networks:
+  # Network for your proxy server and application to connect them,
+  # do not use it for anything else!
+  proxy-net:
+  # Network for postgres, use it for services that need access to the db:
+
+
+volumes:
+  django-media:
+  caddy-config:
+  caddy-data:
