@@ -31,14 +31,13 @@ docker  compose  exec  -it  web  pip install <new_lib_name>
 ```
 ###  Фиксируем новое окружение в файле для pip 
 ```bash
-docker  compose  exec  -it  web  "pip freeze > /code/requirements.txt"
+docker  compose  exec  -it  web pip freeze > ./requirements.txt
 ```
 ###  Пересобираем образ приложения с новым окружением и перестартуем проект  
 ```bash
 docker compose build web
 docker compose up -d
 ```
-
 
 ## ✅ Проверка кода перед PullRequest
 
