@@ -62,8 +62,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     # Local
-    #'app1',
-    #'app2',
+    'core',
 ]
 
 MIDDLEWARE = [
@@ -221,4 +220,11 @@ LOGGING = {
             'propagate': False,
         },
     },
+}
+
+# REST Framework
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'EXCEPTION_HANDLER': 'core.exceptions.exception_handler',
+    'PAGE_SIZE': 20,
 }
