@@ -64,6 +64,7 @@ INSTALLED_APPS = [
     # Local
     #'app1',
     #'app2',
+    'tags',
 ]
 
 MIDDLEWARE = [
