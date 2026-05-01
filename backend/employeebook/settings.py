@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Additional
     'rest_framework',
+    'drf_spectacular',
     'corsheaders',
     # Local
     #'app1',
@@ -164,6 +165,16 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # Media files (User's uploaded content)
 MEDIA_URL = 'media/'
 MEDIA_ROOT = str(BASE_DIR / 'media') if DEBUG else '/var/www/django/media'
+
+REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'API Книга сотрудников',
+    'DESCRIPTION': 'Документация API проекта «Книга сотрудников»',
+    'VERSION': '1.0.0',
+}
 
 
 LOGGING = {
