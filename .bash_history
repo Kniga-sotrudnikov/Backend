@@ -24,3 +24,9 @@ ruff check . --fix
 cd ..
 ./docker/django/ci.sh
 exit
+pwd
+touch .gitattributes
+;s
+ls
+ls -la
+exit
