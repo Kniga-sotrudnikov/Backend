@@ -30,3 +30,7 @@ touch .gitattributes
 ls
 ls -la
 exit
+cd backend/
+python manage.py makemigrations
+python manage.py migrate
+exit
