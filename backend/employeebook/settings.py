@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 import sys
+from datetime import timedelta
 from pathlib import Path
 
 from decouple import Config, RepositoryEnv
@@ -60,10 +61,12 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Additional
     'rest_framework',
+    'rest_framework_simplejwt',
     'corsheaders',
     # Local
     #'app1',
     #'app2',
+    'accounts.apps.AccountsConfig',
 ]
 
 MIDDLEWARE = [
@@ -221,4 +224,15 @@ LOGGING = {
             'propagate': False,
         },
     },
+}
+
+AUTH_USER_MODEL = 'accounts.User'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication.JWTAuthentication',),
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=20),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 }
