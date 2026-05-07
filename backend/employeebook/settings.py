@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'corsheaders',
     # Local
     'core',
+    'structure',
     'tags',
     'accounts.apps.AccountsConfig',
 ]
