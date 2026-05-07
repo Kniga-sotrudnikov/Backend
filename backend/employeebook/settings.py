@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Additional
     'rest_framework',
+    'drf_spectacular',
     'corsheaders',
     # Local
     'core',
@@ -225,7 +226,15 @@ LOGGING = {
 
 # REST Framework
 REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'EXCEPTION_HANDLER': 'core.exceptions.exception_handler',
     'PAGE_SIZE': 20,
+}
+
+# API documentation
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'API Книга сотрудников',
+    'DESCRIPTION': 'Документация API проекта «Книга сотрудников»',
+    'VERSION': '1.0.0',
 }
