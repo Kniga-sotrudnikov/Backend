@@ -87,3 +87,5 @@ exclude_lines = [
     "@(abc\\.)?abstractmethod",
 ]
 
+[tool.ruff.lint.isort]
+known-first-party = ["accounts"]

@@ -1,6 +1,7 @@
-from accounts.constants import ROLE_MAX_LENGTH
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+
+from accounts.constants import ROLE_MAX_LENGTH
 
 
 class Role(models.TextChoices):
