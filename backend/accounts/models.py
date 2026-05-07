@@ -12,7 +12,7 @@ class Role(models.TextChoices):
 
 
 class User(AbstractUser):
-    """Базовая модель пользователя наследуется от AbstractUser."""
+    """Базовая модель пользователя"""
 
     role = models.CharField(max_length=ROLE_MAX_LENGTH, choices=Role.choices, verbose_name='Роль')
 
