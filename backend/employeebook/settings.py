@@ -165,16 +165,6 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 MEDIA_URL = 'media/'
 MEDIA_ROOT = str(BASE_DIR / 'media') if DEBUG else '/var/www/django/media'
 
-REST_FRAMEWORK = {
-    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-}
-
-SPECTACULAR_SETTINGS = {
-    'TITLE': 'API Книга сотрудников',
-    'DESCRIPTION': 'Документация API проекта «Книга сотрудников»',
-    'VERSION': '1.0.0',
-}
-
 
 LOGGING = {
     'version': 1,
@@ -235,7 +225,15 @@ LOGGING = {
 
 # REST Framework
 REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'EXCEPTION_HANDLER': 'core.exceptions.exception_handler',
     'PAGE_SIZE': 20,
+}
+
+# API documentation
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'API Книга сотрудников',
+    'DESCRIPTION': 'Документация API проекта «Книга сотрудников»',
+    'VERSION': '1.0.0',
 }
