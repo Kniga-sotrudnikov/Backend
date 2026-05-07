@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 import sys
+from datetime import timedelta
 from pathlib import Path
 
 from decouple import Config, RepositoryEnv
@@ -60,11 +61,13 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Additional
     'rest_framework',
+    'rest_framework_simplejwt',
     'drf_spectacular',
     'corsheaders',
     # Local
     'core',
     'tags',
+    'accounts.apps.AccountsConfig',
 ]
 
 MIDDLEWARE = [
@@ -230,6 +233,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'EXCEPTION_HANDLER': 'core.exceptions.exception_handler',
     'PAGE_SIZE': 20,
+    'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication.JWTAuthentication',),
 }
 
 # API documentation
@@ -238,3 +242,10 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'Документация API проекта «Книга сотрудников»',
     'VERSION': '1.0.0',
 }
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=20),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+}
+
+AUTH_USER_MODEL = 'accounts.User'
