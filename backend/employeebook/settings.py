@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'core',
     'tags',
     'accounts.apps.AccountsConfig',
+    'medias',
 ]
 
 MIDDLEWARE = [
@@ -166,8 +167,9 @@ STATIC_ROOT = '.static' if DEBUG else '/var/www/django/static'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Media files (User's uploaded content)
-MEDIA_URL = 'media/'
-MEDIA_ROOT = str(BASE_DIR / 'media') if DEBUG else '/var/www/django/media'
+DEFAULT_FILE_STORAGE = 'core.storage.HashedFileStorage'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'mediafiles'
 
 
 LOGGING = {
