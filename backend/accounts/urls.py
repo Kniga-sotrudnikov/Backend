@@ -7,9 +7,9 @@ from accounts.views.magic_link import MagicLinkRequestView, MagicLinkVerifyView
 from accounts.views.token_obtain import EmailTokenObtainPairView
 
 urlpatterns = [
-    path('auth/login/', EmailTokenObtainPairView.as_view()),
-    path('auth/token/refresh/', TokenRefreshView.as_view()),
-    path('auth/login/magic-link/', MagicLinkRequestView.as_view()),
+    path('auth/login/', EmailTokenObtainPairView.as_view(), name='token_obtain'),
+    path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('auth/login/magic-link/', MagicLinkRequestView.as_view(), name='magic_link'),
     path(
         'auth/login/magic-link/verify/',
         MagicLinkVerifyView.as_view(),
