@@ -249,7 +249,7 @@ SPECTACULAR_SETTINGS = {
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=20),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
-    'TOKEN_OBTAIN_SERIALIZER': 'accounts.serializers.token_obtain',
+    'TOKEN_OBTAIN_SERIALIZER': 'accounts.serializers.token_obtain.EmailTokenObtainPairSerializer',
 }
 
 AUTH_USER_MODEL = 'accounts.User'
