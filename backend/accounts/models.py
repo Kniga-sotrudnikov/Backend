@@ -21,6 +21,16 @@ class User(AbstractUser):
     def __str__(self):
         return self.username
 
+    @property
+    def is_hr(self):
+        """Проверяет является ли пользователь эйчаром."""
+        return self.role == Role.HR_ADMIN
+
+    @property
+    def is_employee(self):
+        """Проверяет является пользователь сотрудником."""
+        return self.role == Role.EMPLOYEE
+
 
 class MagicLinkToken(models.Model):
     """Одноразовый токен для аутентификации пользователя через magic link."""
