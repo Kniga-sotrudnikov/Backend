@@ -62,11 +62,14 @@ INSTALLED_APPS = [
     # Additional
     'rest_framework',
     'rest_framework_simplejwt',
+    'drf_spectacular',
     'corsheaders',
     # Local
-    #'app1',
-    #'app2',
+    'core',
+    'structure',
+    'tags',
     'accounts.apps.AccountsConfig',
+    'medias',
 ]
 
 MIDDLEWARE = [
@@ -165,8 +168,9 @@ STATIC_ROOT = '.static' if DEBUG else '/var/www/django/static'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Media files (User's uploaded content)
-MEDIA_URL = 'media/'
-MEDIA_ROOT = str(BASE_DIR / 'media') if DEBUG else '/var/www/django/media'
+DEFAULT_FILE_STORAGE = 'core.storage.HashedFileStorage'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'mediafiles'
 
 
 LOGGING = {
@@ -226,13 +230,25 @@ LOGGING = {
     },
 }
 
-AUTH_USER_MODEL = 'accounts.User'
-
+# REST Framework
 REST_FRAMEWORK = {
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'EXCEPTION_HANDLER': 'core.exceptions.exception_handler',
+    'PAGE_SIZE': 20,
     'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication.JWTAuthentication',),
+}
+
+# API documentation
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'API Книга сотрудников',
+    'DESCRIPTION': 'Документация API проекта «Книга сотрудников»',
+    'VERSION': '1.0.0',
 }
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=20),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
 }
+
+AUTH_USER_MODEL = 'accounts.User'

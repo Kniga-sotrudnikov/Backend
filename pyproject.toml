@@ -9,8 +9,10 @@ readme = "README.md"
 
 
 [tool.pytest.ini_options]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short --import-mode=importlib"
 testpaths = ["backend/tests"]
+pythonpath = ["backend"]
+DJANGO_SETTINGS_MODULE = "employeebook.settings"
 
 [tool.ruff]
 line-length = 120
@@ -84,4 +86,5 @@ exclude_lines = [
     "class .*\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
 ]
-
+[tool.ruff.lint.isort]
+known-first-party = ["accounts"]

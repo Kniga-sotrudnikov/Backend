@@ -1,7 +1,9 @@
+from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
 
-from accounts.constants import ROLE_MAX_LENGTH
+from accounts.constants import ROLE_MAX_LENGTH, TOKEN_HASH_MAX_LENGTH
 
 
 class Role(models.TextChoices):
@@ -18,3 +20,18 @@ class User(AbstractUser):
 
     def __str__(self):
         return self.username
+
+
+class MagicLinkToken(models.Model):
+    """Одноразовый токен для аутентификации пользователя через magic link."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='magic_tokens', verbose_name='Пользователь'
+    )
+    token_hash = models.CharField(max_length=TOKEN_HASH_MAX_LENGTH, unique=True, verbose_name='Хэш токена')
+    expires_at = models.DateTimeField(verbose_name='Истекает')
+    used_at = models.DateTimeField(null=True, blank=True, verbose_name='Использован')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создан')
+
+    def is_valid(self):
+        return self.used_at is None and self.expires_at > timezone.now()
