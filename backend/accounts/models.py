@@ -3,7 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
 
-from accounts.constants import ROLE_MAX_LENGTH, TOKEN_HASH_MAX_LENGTH
+from accounts.constants import MAX_LENGTH_FIRST_NAME, MAX_LENGTH_LAST_NAME, ROLE_MAX_LENGTH, TOKEN_HASH_MAX_LENGTH
 
 
 class Role(models.TextChoices):
@@ -16,10 +16,17 @@ class Role(models.TextChoices):
 class User(AbstractUser):
     """Базовая модель пользователя наследуется от AbstractUser."""
 
-    role = models.CharField(max_length=ROLE_MAX_LENGTH, choices=Role.choices, verbose_name='Роль')
+    first_name = models.CharField(max_length=MAX_LENGTH_FIRST_NAME)
+    last_name = models.CharField(max_length=MAX_LENGTH_LAST_NAME)
+    email = models.EmailField(unique=True)
+    role = models.CharField(
+        max_length=ROLE_MAX_LENGTH, choices=Role.choices, verbose_name='Роль', default=Role.EMPLOYEE
+    )
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
 
     def __str__(self):
-        return self.username
+        return self.email
 
 
 class MagicLinkToken(models.Model):

@@ -1,4 +1,5 @@
 import pytest
+from django.urls import reverse
 
 
 @pytest.fixture
@@ -24,3 +25,34 @@ def user(db):
 def auth_client(api_client, user):
     api_client.force_authenticate(user=user)
     return api_client
+
+
+@pytest.fixture
+def login_url():
+    return reverse('token_obtain')
+
+
+@pytest.fixture
+def refresh_url():
+    return reverse('token_refresh')
+
+
+@pytest.fixture
+def magic_link_verify_url():
+    return reverse('magic_link')
+
+
+@pytest.fixture
+def data_for_success_auth(user):
+    return {
+        'email': user.email,
+        'password': 'testpassword123'
+    }
+
+
+@pytest.fixture
+def data_wrong_password(user):
+    return {
+        'email': user.email,
+        'password': 'wrong_password123'
+    }
