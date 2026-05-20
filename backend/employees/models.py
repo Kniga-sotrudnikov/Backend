@@ -8,6 +8,7 @@ from employees.constants import (
     PHONE_MAX_LENGTH,
     STATUS_MAX_LENGTH,
 )
+from structure.models import Department
 
 
 class Status(models.TextChoices):
@@ -96,9 +97,9 @@ class Employee(BaseModel, SoftDeleteModel):
         return self.full_name
 
     @property
-    def direction(self):
+    def direction(self) -> Department | None:
         """Возвращает направление сотрудника на основе родителя отдела."""
-        parent = self.department.parent
-        if parent and parent.type == 'direction':
+        parent: Department = self.department.parent
+        if parent and parent.type == Department.Type.DIRECTION:
             return parent
         return None

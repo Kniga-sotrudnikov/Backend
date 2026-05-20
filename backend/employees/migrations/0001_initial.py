@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -30,11 +29,58 @@ class Migration(migrations.Migration):
                 ('phone', models.CharField(blank=True, max_length=50, verbose_name='Телефон')),
                 ('interests', models.TextField(blank=True, verbose_name='Компетенции')),
                 ('birthday', models.DateField(verbose_name='День рождения')),
-                ('status', models.CharField(choices=[('active', 'Активный'), ('archived', 'Архивированный')], default='active', max_length=20, verbose_name='Статус')),
-                ('created_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='created_employees', to=settings.AUTH_USER_MODEL, verbose_name='Кем создано')),
-                ('department', models.ForeignKey(limit_choices_to={'type': 'department'}, on_delete=django.db.models.deletion.PROTECT, related_name='employees', to='structure.department', verbose_name='Отдел')),
-                ('updated_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='updated_employees', to=settings.AUTH_USER_MODEL, verbose_name='Кем обновлено')),
-                ('user', models.OneToOneField(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='employee', to=settings.AUTH_USER_MODEL, verbose_name='Пользователь')),
+                (
+                    'status',
+                    models.CharField(
+                        choices=[('active', 'Активный'), ('archived', 'Архивированный')],
+                        default='active',
+                        max_length=20,
+                        verbose_name='Статус',
+                    ),
+                ),
+                (
+                    'created_by',
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name='created_employees',
+                        to=settings.AUTH_USER_MODEL,
+                        verbose_name='Кем создано',
+                    ),
+                ),
+                (
+                    'department',
+                    models.ForeignKey(
+                        limit_choices_to={'type': 'department'},
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name='employees',
+                        to='structure.department',
+                        verbose_name='Отдел',
+                    ),
+                ),
+                (
+                    'updated_by',
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name='updated_employees',
+                        to=settings.AUTH_USER_MODEL,
+                        verbose_name='Кем обновлено',
+                    ),
+                ),
+                (
+                    'user',
+                    models.OneToOneField(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name='employee',
+                        to=settings.AUTH_USER_MODEL,
+                        verbose_name='Пользователь',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Сотрудник',

@@ -7,7 +7,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('employees', '0001_initial'),
         ('tags', '0001_initial'),
@@ -19,10 +18,43 @@ class Migration(migrations.Migration):
             name='EmployeeTag',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('assigned_at', models.DateTimeField(default=django.utils.timezone.now, help_text='Дата и время присвоения тега.', verbose_name='Когда назначен тег')),
-                ('assigned_by_id', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='assigned_employee_tags', to=settings.AUTH_USER_MODEL, verbose_name='Кем назначен тег')),
-                ('employee', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='employee_tags', to='employees.employee', verbose_name='Сотрудник')),
-                ('tag', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='employee_tags', to='tags.tag', verbose_name='Тег')),
+                (
+                    'assigned_at',
+                    models.DateTimeField(
+                        default=django.utils.timezone.now,
+                        help_text='Дата и время присвоения тега.',
+                        verbose_name='Когда назначен тег',
+                    ),
+                ),
+                (
+                    'assigned_by_id',
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name='assigned_employee_tags',
+                        to=settings.AUTH_USER_MODEL,
+                        verbose_name='Кем назначен тег',
+                    ),
+                ),
+                (
+                    'employee',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='employee_tags',
+                        to='employees.employee',
+                        verbose_name='Сотрудник',
+                    ),
+                ),
+                (
+                    'tag',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='employee_tags',
+                        to='tags.tag',
+                        verbose_name='Тег',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Тег сотрудника',
