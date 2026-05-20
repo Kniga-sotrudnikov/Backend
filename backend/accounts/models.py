@@ -3,7 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
 
-from accounts.constants import MAX_LENGTH_FIRST_NAME, MAX_LENGTH_LAST_NAME, ROLE_MAX_LENGTH, TOKEN_HASH_MAX_LENGTH
+from core.constants import MAX_LENGTH_FIRST_NAME, MAX_LENGTH_LAST_NAME, ROLE_MAX_LENGTH, TOKEN_HASH_MAX_LENGTH
 
 
 class Role(models.TextChoices):
@@ -24,6 +24,16 @@ class User(AbstractUser):
     )
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'first_name', 'last_name']
+
+    @property
+    def is_hr(self):
+        """Проверяет является ли пользователь эйчаром."""
+        return self.role == Role.HR_ADMIN
+
+    @property
+    def is_employee(self):
+        """Проверяет является пользователь сотрудником."""
+        return self.role == Role.EMPLOYEE
 
     def __str__(self):
         return self.email

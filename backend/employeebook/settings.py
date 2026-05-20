@@ -237,6 +237,9 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'core.exceptions.exception_handler',
     'PAGE_SIZE': 20,
     'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication.JWTAuthentication',),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
 }
 
 # API documentation
