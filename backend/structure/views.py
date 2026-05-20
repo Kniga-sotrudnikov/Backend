@@ -1,7 +1,7 @@
+from django.db.models import Prefetch
 from rest_framework import generics, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt import models
 
 from .models import Department
 from .serializers import DepartmentBriefSerializer, DepartmentDetailSerializer, OrgTreeNodeSerializer
@@ -29,7 +29,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
         return DepartmentBriefSerializer
 
     def perform_destroy(self, instance):
-        instance.delete(user=self.request.user)
+        instance.delete()
 
 
 class DirectionListView(generics.ListAPIView):
@@ -50,9 +50,7 @@ class OrgStructureTreeView(APIView):
         roots = (
             Department.objects.active()
             .filter(parent__isnull=True)
-            .prefetch_related(
-                models.Prefetch('children', queryset=Department.objects.active(), to_attr='prefetched_children')
-            )
+            .prefetch_related(Prefetch('children', queryset=Department.objects.active(), to_attr='prefetched_children'))
         )
 
         serializer = OrgTreeNodeSerializer(roots, many=True)

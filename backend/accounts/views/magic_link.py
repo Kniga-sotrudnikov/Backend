@@ -46,5 +46,11 @@ class MagicLinkVerifyView(GenericAPIView):
             {
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
+                'user': {
+                    'id': token.user.id,
+                    'email': token.user.email,
+                    'role': token.user.role,
+                    'employee_id': getattr(token.user, 'employee', None) and token.user.employee.id,
+                },
             }
         )
