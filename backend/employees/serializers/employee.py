@@ -1,7 +1,15 @@
 from employees.models import Employee
+from employees.services import EmployeeCreate, EmployeeUpdate, create_employee, update_employee
 from rest_framework import serializers
+from tags.serializers import TagSerializer
 
-# from tags.serializers import TagSerializer
+
+def get_request_user(context):
+    """Возвращает пользователя, выполнившего запрос."""
+    request = context.get('request')
+    if request and request.user.is_authenticated:
+        return request.user
+    return None
 
 
 class EmployeeBriefSerializer(serializers.ModelSerializer):
@@ -51,7 +59,71 @@ class EmployeeBriefSerializer(serializers.ModelSerializer):
         }
         return f'{obj.birthday.day} {month[obj.birthday.month]}'
 
-    def get_photo_url(self):
+    def get_photo_url(self, obj: Employee):
         return None
 
-    def get_tags(self): ...
+    def get_tags(self, obj: Employee):
+        return TagSerializer([employee_tag.tag for employee_tag in obj.employee_tags.all()], many=True).data
+
+
+class EmployeeDetailSerializer(EmployeeBriefSerializer):
+    class Meta(EmployeeBriefSerializer.Meta):
+        fields = EmployeeBriefSerializer.Meta.fields + (
+            'email',
+            'phone',
+            'interests',
+            'birthday',
+            'role_description',
+            'department',
+        )
+
+
+class EmployeeAdminDetailSerializer(EmployeeDetailSerializer):
+    class Meta(EmployeeDetailSerializer.Meta):
+        fields = EmployeeDetailSerializer.Meta.fields + (
+            'created_at',
+            'updated_at',
+            'created_by',
+        )
+
+
+class EmployeeCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Employee
+        fields = (
+            'full_name',
+            'job_title',
+            'role_description',
+            'email',
+            'phone',
+            'interests',
+            'birthday',
+            'user',
+            'department',
+        )
+
+    def create(self, validated_data):
+        return create_employee(EmployeeCreate(**validated_data), created_by=get_request_user(self.context))
+
+
+class EmployeeUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Employee
+        fields = (
+            'full_name',
+            'job_title',
+            'role_description',
+            'email',
+            'phone',
+            'interests',
+            'birthday',
+            'user',
+            'department',
+        )
+
+    def update(self, instance, validated_data):
+        return update_employee(
+            instance,
+            EmployeeUpdate(**validated_data),
+            updated_by=get_request_user(self.context),
+        )
