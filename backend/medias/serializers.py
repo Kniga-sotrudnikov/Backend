@@ -1,6 +1,5 @@
+from medias.validators import validate_file_extension, validate_file_size
 from rest_framework import serializers
-
-from backend.medias.validators import validate_file_extension, validate_file_size
 
 
 class EmployeePhotoUploadSerializer(serializers.Serializer):

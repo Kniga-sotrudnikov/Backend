@@ -1,7 +1,7 @@
+from django.db.models import Prefetch
 from rest_framework import generics, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework_simplejwt import models
 
 from .models import Department
 from .serializers import DepartmentBriefSerializer, DepartmentDetailSerializer, OrgTreeNodeSerializer
@@ -11,7 +11,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
     """Управление подразделениями с ручной фильтрацией параметров."""
 
     def get_queryset(self):
-        queryset = Department.objects.active()
+        queryset = Department.objects.all()
 
         # Получаем параметры из self.request.query_params
         dept_type = self.request.query_params.get('type')
@@ -29,13 +29,13 @@ class DepartmentViewSet(viewsets.ModelViewSet):
         return DepartmentBriefSerializer
 
     def perform_destroy(self, instance):
-        instance.delete(user=self.request.user)
+        instance.delete()
 
 
 class DirectionListView(generics.ListAPIView):
     """Только направления верхнего уровня (parent_id is null)."""
 
-    queryset = Department.objects.active().filter(parent__isnull=True)
+    queryset = Department.objects.all().filter(parent__isnull=True)
     serializer_class = DepartmentBriefSerializer
 
 
@@ -48,11 +48,9 @@ class OrgStructureTreeView(APIView):
 
     def get(self, request, *args, **kwargs):
         roots = (
-            Department.objects.active()
+            Department.objects.all()
             .filter(parent__isnull=True)
-            .prefetch_related(
-                models.Prefetch('children', queryset=Department.objects.active(), to_attr='prefetched_children')
-            )
+            .prefetch_related(Prefetch('children', queryset=Department.objects.active(), to_attr='prefetched_children'))
         )
 
         serializer = OrgTreeNodeSerializer(roots, many=True)
