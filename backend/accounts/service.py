@@ -6,7 +6,9 @@ from django.contrib.auth.base_user import AbstractBaseUser
 from django.utils import timezone
 
 from accounts.models import MagicLinkToken
-from core.constants import TOKEN_LIFETIME
+
+
+_TOKEN_LIFETIME = 15
 
 
 def generate_magic_token(user: AbstractBaseUser) -> str:
@@ -22,7 +24,7 @@ def generate_magic_token(user: AbstractBaseUser) -> str:
     raw_token = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
     MagicLinkToken.objects.create(
-        user=user, token_hash=token_hash, expires_at=timezone.now() + timedelta(minutes=TOKEN_LIFETIME)
+        user=user, token_hash=token_hash, expires_at=timezone.now() + timedelta(minutes=_TOKEN_LIFETIME)
     )
     return raw_token
 

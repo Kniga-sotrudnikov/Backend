@@ -3,7 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
 
-from core.constants import MAX_LENGTH_FIRST_NAME, MAX_LENGTH_LAST_NAME, ROLE_MAX_LENGTH, TOKEN_HASH_MAX_LENGTH
+from accounts.constants import MAX_LENGTH_FIRST_NAME, MAX_LENGTH_LAST_NAME, ROLE_MAX_LENGTH, TOKEN_HASH_MAX_LENGTH
 
 
 class Role(models.TextChoices):

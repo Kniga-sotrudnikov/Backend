@@ -6,7 +6,7 @@ class IsHR(BasePermission):
 
     def has_permission(self, request, view):
         """Доступ только эйчар."""
-        return request.user.is_hr
+        return request.user.is_authenticated and request.user.is_hr
 
 
 class IsEmployee(BasePermission):
@@ -14,20 +14,19 @@ class IsEmployee(BasePermission):
 
     def has_permission(self, request, view):
         """Доступ только сотруднику."""
-        return request.user.is_employee
+        return request.user.is_authenticated and request.user.is_employee
 
 
 class IsOwnerOrHR(BasePermission):
     """Доступ для Эйчар или владельца объекта."""
 
     def has_permission(self, request, view):
-        """Пропускаем, так как пользователи по дефолту авторизированны (DEFAULT_PERMISSION_CLASSES)."""
-        return True
+        return request.user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
         """Проверка на уровне объекта эйчар или сотрудник."""
         if request.user.is_hr:
             return True
         if request.method in SAFE_METHODS:
-            return obj.user.id == request.user.id
+            return obj.user_id == request.user.id
         return False
