@@ -1,6 +1,7 @@
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import viewsets
 
+from accounts.permissions import IsHR
 from core.constants import READ_ROLES, TAGS_TAG, WRITE_ROLES
 from tags.models import Tag
 from tags.serializers import TagSerializer
@@ -20,7 +21,7 @@ from tags.serializers import TagSerializer
     retrieve=extend_schema(
         tags=[TAGS_TAG],
         summary='Подробности тега',
-        description=WRITE_ROLES,
+        description=READ_ROLES,
     ),
     update=extend_schema(
         tags=[TAGS_TAG],
@@ -43,3 +44,8 @@ class TagViewSet(viewsets.ModelViewSet):
 
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
+
+    def get_permissions(self):
+        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+            return [IsHR()]
+        return super().get_permissions()

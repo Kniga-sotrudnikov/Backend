@@ -7,7 +7,6 @@ from django.utils import timezone
 
 from accounts.models import MagicLinkToken
 
-
 _TOKEN_LIFETIME = 15
 
 

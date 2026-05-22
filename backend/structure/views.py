@@ -4,6 +4,7 @@ from rest_framework import generics, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from accounts.permissions import IsHR
 from core.constants import READ_ROLES, STRUCTURE_TAG, WRITE_ROLES
 from structure.models import Department
 from structure.serializers import DepartmentBriefSerializer, DepartmentDetailSerializer, OrgTreeNodeSerializer
@@ -18,7 +19,7 @@ from structure.serializers import DepartmentBriefSerializer, DepartmentDetailSer
     create=extend_schema(
         tags=[STRUCTURE_TAG],
         summary='Создание подразделения',
-        description=READ_ROLES,
+        description=WRITE_ROLES,
     ),
     retrieve=extend_schema(
         tags=[STRUCTURE_TAG],
@@ -28,17 +29,17 @@ from structure.serializers import DepartmentBriefSerializer, DepartmentDetailSer
     update=extend_schema(
         tags=[STRUCTURE_TAG],
         summary='Полное обновление подразделения',
-        description=READ_ROLES,
+        description=WRITE_ROLES,
     ),
     partial_update=extend_schema(
         tags=[STRUCTURE_TAG],
         summary='Частичное обновление подразделения',
-        description=READ_ROLES,
+        description=WRITE_ROLES,
     ),
     destroy=extend_schema(
         tags=[STRUCTURE_TAG],
         summary='Удаление подразделения',
-        description=READ_ROLES,
+        description=WRITE_ROLES,
     ),
 )
 class DepartmentViewSet(viewsets.ModelViewSet):
@@ -61,12 +62,17 @@ class DepartmentViewSet(viewsets.ModelViewSet):
             return DepartmentDetailSerializer
         return DepartmentBriefSerializer
 
+    def get_permissions(self):
+        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+            return [IsHR()]
+        return super().get_permissions()
+
     def perform_destroy(self, instance):
         instance.delete()
 
 
 @extend_schema(
-    tags=[WRITE_ROLES],
+    tags=[STRUCTURE_TAG],
     summary='Список направлений верхнего уровня',
     description=READ_ROLES,
 )
