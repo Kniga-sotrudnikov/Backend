@@ -45,7 +45,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
     """Управление подразделениями с ручной фильтрацией параметров."""
 
     def get_queryset(self):
-        queryset = Department.objects.active()
+        queryset = Department.objects.all()
 
         dept_type = self.request.query_params.get('type')
         parent_id = self.request.query_params.get('parent_id')
@@ -73,7 +73,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
 class DirectionListView(generics.ListAPIView):
     """Только направления верхнего уровня (parent_id is null)."""
 
-    queryset = Department.objects.active().filter(parent__isnull=True)
+    queryset = Department.objects.all().filter(parent__isnull=True)
     serializer_class = DepartmentBriefSerializer
 
 
@@ -87,7 +87,7 @@ class OrgStructureTreeView(APIView):
 
     def get(self, request, *args, **kwargs):
         roots = (
-            Department.objects.active()
+            Department.objects.all()
             .filter(parent__isnull=True)
             .prefetch_related(Prefetch('children', queryset=Department.objects.active(), to_attr='prefetched_children'))
         )
