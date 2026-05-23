@@ -14,6 +14,7 @@ cp  .env.example  .env
 ```bash
 docker  compose  up  -d
 ```
+Поднимает все сервисы: web, postgres, redis, celery_worker, celery_beat.
 
 ### Применяем миграции и создаем суперпользователя:
 ```bash
