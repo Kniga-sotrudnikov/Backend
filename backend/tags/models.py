@@ -38,9 +38,9 @@ class EmployeeTag(models.Model, SoftDeleteModel):
 
     tag = models.ForeignKey(Tag, on_delete=models.CASCADE, related_name='employee_tags', verbose_name='Тег')
     employee = models.ForeignKey(
-        'accounts.User', on_delete=models.CASCADE, related_name='employee_tags', verbose_name=('Сотрудник')
+        'employees.Employee', on_delete=models.CASCADE, related_name='employee_tags', verbose_name=('Сотрудник')
     )
-    assigned_by = models.ForeignKey(
+    assigned_by_id = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
