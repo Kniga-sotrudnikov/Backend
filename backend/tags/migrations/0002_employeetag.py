@@ -27,7 +27,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 (
-                    'assigned_by_id',
+                    'assigned_by',
                     models.ForeignKey(
                         blank=True,
                         null=True,
