@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import AllowAny
@@ -12,6 +13,11 @@ from accounts.service import generate_magic_token, get_token_instance
 User = get_user_model()
 
 
+@extend_schema(
+    tags=['Аутентификация'],
+    summary='Запрос магической ссылки',
+    description='Доступно всем (без авторизации). Отправляет одноразовую ссылку на указанный email.',
+)
 class MagicLinkRequestView(GenericAPIView):
     serializer_class = MagicLinkRequestSerializer
     permission_classes = (AllowAny,)
@@ -28,6 +34,11 @@ class MagicLinkRequestView(GenericAPIView):
         return Response({'detail': 'Ссылка отправлена на указанную почту'}, status=status.HTTP_200_OK)
 
 
+@extend_schema(
+    tags=['Аутентификация'],
+    summary='Верификация магической ссылки',
+    description='Доступно всем (без авторизации). Возвращает JWT access/refresh токены.',
+)
 class MagicLinkVerifyView(GenericAPIView):
     serializer_class = MagicLinkVerifySerializer
     permission_classes = (AllowAny,)
@@ -46,5 +57,11 @@ class MagicLinkVerifyView(GenericAPIView):
             {
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
+                'user': {
+                    'id': token.user.id,
+                    'email': token.user.email,
+                    'role': token.user.role,
+                    'employee_id': getattr(token.user, 'employee', None) and token.user.employee.id,
+                },
             }
         )
