@@ -20,8 +20,7 @@ from accounts.permissions import IsHR
 class EmployeeViewSet(ReadOnlyModelViewSet):
     def get_queryset(self):
         return (
-            Employee.objects.active()
-            .filter(status=Status.ACTIVE)
+            Employee.objects.filter(status=Status.ACTIVE)
             .select_related('department', 'department__parent')
             .prefetch_related('employee_tags__tag')
         )
