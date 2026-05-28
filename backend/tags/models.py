@@ -40,7 +40,7 @@ class EmployeeTag(SoftDeleteModel, models.Model):
     employee = models.ForeignKey(
         'employees.Employee', on_delete=models.CASCADE, related_name='employee_tags', verbose_name=('Сотрудник')
     )
-    assigned_by_id = models.ForeignKey(
+    assigned_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
@@ -72,4 +72,4 @@ class EmployeeTag(SoftDeleteModel, models.Model):
         ordering = ['-assigned_at']
 
     def __str__(self):
-        return f'{self.employee.username} - {self.tag.name}'
+        return f'{self.employee.full_name} - {self.tag.name}'

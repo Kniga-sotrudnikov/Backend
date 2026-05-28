@@ -3,6 +3,7 @@ from datetime import date
 
 from django.contrib.auth.base_user import AbstractBaseUser
 from employees.models import Employee, Status
+
 from structure.models import Department
 
 
@@ -87,5 +88,4 @@ def archive_employee(
         employee.updated_by = updated_by
         update_fields.append('updated_by')
     employee.save(update_fields=update_fields)
-    employee.delete()
     return employee

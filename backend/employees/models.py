@@ -1,4 +1,3 @@
-from core.models import BaseModel, SoftDeleteModel
 from django.conf import settings
 from django.db import models
 from employees.constants import (
@@ -8,6 +7,8 @@ from employees.constants import (
     PHONE_MAX_LENGTH,
     STATUS_MAX_LENGTH,
 )
+
+from core.models import BaseModel, SoftDeleteModel
 from structure.models import Department
 
 

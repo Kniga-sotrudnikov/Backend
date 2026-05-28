@@ -14,12 +14,13 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
+from accounts.permissions import IsHR
+
 
 class EmployeeViewSet(ReadOnlyModelViewSet):
     def get_queryset(self):
         return (
-            Employee.objects.active()
-            .filter(status=Status.ACTIVE)
+            Employee.objects.filter(status=Status.ACTIVE)
             .select_related('department', 'department__parent')
             .prefetch_related('employee_tags__tag')
         )
@@ -31,7 +32,7 @@ class EmployeeViewSet(ReadOnlyModelViewSet):
 
 
 class EmployeeAdminViewSet(ModelViewSet):
-    queryset = Employee.objects.all()
+    permission_classes = [IsHR]
 
     def get_queryset(self):
         queryset = Employee.objects.select_related('department', 'department__parent').prefetch_related(
