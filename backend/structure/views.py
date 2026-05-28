@@ -1,19 +1,53 @@
 from django.db.models import Prefetch
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, viewsets
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Department
-from .serializers import DepartmentBriefSerializer, DepartmentDetailSerializer, OrgTreeNodeSerializer
+from accounts.permissions import IsHR
+from core.constants import READ_ROLES, STRUCTURE_TAG, WRITE_ROLES
+from structure.models import Department
+from structure.serializers import DepartmentBriefSerializer, DepartmentDetailSerializer, OrgTreeNodeSerializer
 
 
+@extend_schema_view(
+    list=extend_schema(
+        tags=[STRUCTURE_TAG],
+        summary='Список подразделений',
+        description=READ_ROLES,
+    ),
+    create=extend_schema(
+        tags=[STRUCTURE_TAG],
+        summary='Создание подразделения',
+        description=WRITE_ROLES,
+    ),
+    retrieve=extend_schema(
+        tags=[STRUCTURE_TAG],
+        summary='Подробности подразделения',
+        description=READ_ROLES,
+    ),
+    update=extend_schema(
+        tags=[STRUCTURE_TAG],
+        summary='Полное обновление подразделения',
+        description=WRITE_ROLES,
+    ),
+    partial_update=extend_schema(
+        tags=[STRUCTURE_TAG],
+        summary='Частичное обновление подразделения',
+        description=WRITE_ROLES,
+    ),
+    destroy=extend_schema(
+        tags=[STRUCTURE_TAG],
+        summary='Удаление подразделения',
+        description=WRITE_ROLES,
+    ),
+)
 class DepartmentViewSet(viewsets.ModelViewSet):
     """Управление подразделениями с ручной фильтрацией параметров."""
 
     def get_queryset(self):
         queryset = Department.objects.all()
 
-        # Получаем параметры из self.request.query_params
         dept_type = self.request.query_params.get('type')
         parent_id = self.request.query_params.get('parent_id')
 
@@ -28,10 +62,20 @@ class DepartmentViewSet(viewsets.ModelViewSet):
             return DepartmentDetailSerializer
         return DepartmentBriefSerializer
 
+    def get_permissions(self):
+        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+            return [IsHR()]
+        return super().get_permissions()
+
     def perform_destroy(self, instance):
         instance.delete()
 
 
+@extend_schema(
+    tags=[STRUCTURE_TAG],
+    summary='Список направлений верхнего уровня',
+    description=READ_ROLES,
+)
 class DirectionListView(generics.ListAPIView):
     """Только направления верхнего уровня (parent_id is null)."""
 
@@ -39,12 +83,13 @@ class DirectionListView(generics.ListAPIView):
     serializer_class = DepartmentBriefSerializer
 
 
+@extend_schema(
+    tags=[STRUCTURE_TAG],
+    summary='Дерево организационной структуры',
+    description=READ_ROLES,
+)
 class OrgStructureTreeView(APIView):
-    """
-    Эндпоинт для получения полного дерева организации.
-
-    Начинает построение с объектов верхнего уровня (направлений).
-    """
+    """Полное дерево организации, начиная с направлений верхнего уровня."""
 
     def get(self, request, *args, **kwargs):
         roots = (
