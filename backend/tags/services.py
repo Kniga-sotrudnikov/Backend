@@ -2,7 +2,7 @@ from django.utils import timezone
 from django.db import transaction, IntegrityError
 from django.contrib.auth import get_user_model
 from .models import EmployeeTag, Tag
-from Employees.models import Employee
+from employees.models import Employee
 from .validators import validate_employee_tag_assignment
 
 
@@ -21,7 +21,6 @@ def assign_tags(employee: Employee, tag_ids: list[int], by_user: User) -> None:
         missing_tag_ids = set(tag_ids) - existing_tag_ids
         raise ValueError(f"Идентификаторы тегов не найдены: {missing_tag_ids}")
 
-    
     assigned_tag_ids = set(
         EmployeeTag.objects.filter(employee=employee, is_deleted=False).values_list('tag_id', flat=True)
     )

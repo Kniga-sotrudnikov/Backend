@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from Employees.models import Employee
+from employees.models import Employee
 
 User = get_user_model()
 

@@ -29,7 +29,7 @@ class Tag(models.Model):
         return self.name
 
 
-class EmployeeTag(models.Model, SoftDeleteModel):
+class EmployeeTag(SoftDeleteModel, models.Model):
     """
     Связующая модель для назначения тегов сотрудникам.
 

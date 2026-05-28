@@ -2,6 +2,8 @@ from employees.models import Employee
 from employees.services import EmployeeCreate, EmployeeUpdate, create_employee, update_employee
 from rest_framework import serializers
 from tags.serializers import TagSerializer
+from tags.services import assign_tags
+
 
 
 def get_request_user(context):
@@ -88,6 +90,12 @@ class EmployeeAdminDetailSerializer(EmployeeDetailSerializer):
 
 
 class EmployeeCreateSerializer(serializers.ModelSerializer):
+    tags = serializers.ListField(
+        child=serializers.IntegerField(),
+        write_only=True,
+        required=False
+    )
+
     class Meta:
         model = Employee
         fields = (
@@ -100,10 +108,14 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
             'birthday',
             'user',
             'department',
+            'tags',
         )
 
     def create(self, validated_data):
-        return create_employee(EmployeeCreate(**validated_data), created_by=get_request_user(self.context))
+        tag_ids = validated_data.pop('tags', [])
+        employee = create_employee(EmployeeCreate(**validated_data), created_by=get_request_user(self.context))
+        assign_tags(employee, tag_ids, by_user=get_request_user(self.context))
+        return employee
 
 
 class EmployeeUpdateSerializer(serializers.ModelSerializer):
