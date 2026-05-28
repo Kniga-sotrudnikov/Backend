@@ -14,7 +14,6 @@ import sys
 from datetime import timedelta
 from pathlib import Path
 
-from celery import current_app
 from decouple import Config, RepositoryEnv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -253,6 +252,7 @@ SIMPLE_JWT = {
 
 AUTH_USER_MODEL = 'accounts.User'
 
+# Celery
 CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://redis:6379/0')
 CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://redis:6379/0')
 CELERY_ACCEPT_CONTENT = ['json']
@@ -267,8 +267,3 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': 60.0,
     },
 }
-CELERY_TASKS = [
-    'notifications',
-]
-
-current_app.autodiscover_tasks(CELERY_TASKS, force=True)

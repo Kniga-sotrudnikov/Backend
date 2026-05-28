@@ -1,21 +1,14 @@
-# backend/tests/conftest.py
 import pytest
-import django
 
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from django.urls import reverse
 
-from backend.employeebook.celery import app as celery_app
+from employeebook.celery import app as celery_app
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def _django_setup():
-    """Настройка Django + Celery для тестов"""
-    django.setup()
-
-    import notifications.tasks
-    
     celery_app.autodiscover_tasks(['notifications'], force=True)
 
 
@@ -61,20 +54,14 @@ def magic_link_verify_url():
 
 @pytest.fixture
 def data_for_success_auth(user):
-    return {
-        'email': user.email,
-        'password': 'testpassword123'
-    }
+    return {'email': user.email, 'password': 'testpassword123'}
 
 
 @pytest.fixture
 def data_wrong_password(user):
-    return {
-        'email': user.email,
-        'password': 'wrong_password123'
-    }
+    return {'email': user.email, 'password': 'wrong_password123'}
 
 
 @pytest.fixture
-def celery_app_fixture():
+def celery_app_fixture(_django_setup):
     return celery_app

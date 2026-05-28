@@ -21,6 +21,7 @@ docker  compose  up  -d
 docker  compose  exec  -it  web  python  backend/manage.py  migrate
 docker  compose  exec  -it  web  python  backend/manage.py  createsuperuser
 ```
+> Примечание: команда migrate применяет в том числе миграции django_celery_beat (таблицы для периодических задач Celery).
 
 ### Доступ к приложению
 * Откройте http://localhost:8000/ в браузере
