@@ -14,12 +14,14 @@ cp  .env.example  .env
 ```bash
 docker  compose  up  -d
 ```
+Поднимает все сервисы: web, postgres, redis, celery_worker, celery_beat.
 
 ### Применяем миграции и создаем суперпользователя:
 ```bash
 docker  compose  exec  -it  web  python  backend/manage.py  migrate
 docker  compose  exec  -it  web  python  backend/manage.py  createsuperuser
 ```
+> Примечание: команда migrate применяет в том числе миграции django_celery_beat (таблицы для периодических задач Celery).
 
 ### Доступ к приложению
 * Откройте http://localhost:8000/ в браузере

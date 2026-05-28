@@ -1,10 +1,20 @@
 import pytest
+
+from django.contrib.auth import get_user_model
+from rest_framework.test import APIClient
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 
 
 
 User = get_user_model()
+
+from employeebook.celery import app as celery_app
+
+
+@pytest.fixture
+def _django_setup():
+    celery_app.autodiscover_tasks(['notifications'], force=True)
 
 
 @pytest.fixture
@@ -68,16 +78,14 @@ def magic_link_verify_url():
 
 @pytest.fixture
 def data_for_success_auth(user):
-    return {
-        'email': user.email,
-        'password': 'testpassword123'
-    }
+    return {'email': user.email, 'password': 'testpassword123'}
 
 
 @pytest.fixture
 def data_wrong_password(user):
-    return {
-        'email': user.email,
-        'password': 'wrong_password123'
-    }
+    return {'email': user.email, 'password': 'wrong_password123'}
 
+
+@pytest.fixture
+def celery_app_fixture(_django_setup):
+    return celery_app

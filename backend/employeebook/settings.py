@@ -28,9 +28,6 @@ except FileNotFoundError:
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-r@^%=l+_mcgnru4owa!(j6z@+j*-u2w2)5pgzu#ehlm_+z6r@^'
-
 # SECURITY WARNING: don't run with debug turned on in production!
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
@@ -63,6 +60,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'drf_spectacular',
+    'django_celery_beat',
     'corsheaders',
     # Local
     'core',
@@ -71,6 +69,7 @@ INSTALLED_APPS = [
     'tags',
     'accounts.apps.AccountsConfig',
     'medias',
+    'notifications',
 ]
 
 MIDDLEWARE = [
@@ -256,3 +255,19 @@ SIMPLE_JWT = {
 }
 
 AUTH_USER_MODEL = 'accounts.User'
+
+# Celery
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://redis:6379/0')
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://redis:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+
+CELERY_BEAT_SCHEDULE = {
+    'ping-every-minute': {
+        'task': 'notifications.tasks.ping',
+        'schedule': 60.0,
+    },
+}

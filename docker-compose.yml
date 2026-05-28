@@ -1,11 +1,4 @@
 ---
-
-# Default compose file for development and production.
-# Should be used directly in development.
-# Automatically loads `docker-compose.override.yml` if it exists.
-# No extra steps required.
-# Should be used together with `docker/docker-compose.server.yml` in production.
-
 services:
   postgres:
     image: "postgres:17-alpine"
@@ -22,47 +15,61 @@ services:
       retries: 5
       start_period: 5s
 
+  redis:
+    image: "redis:7-alpine"
+    restart: unless-stopped
+    networks:
+      - web-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
   web:
     <<: &web
-      # Image name is changed in production:
       image: "employeebook:dev"
       volumes:
         - django-static:/var/www/django/static
-      depends_on:
-        postgres:
-          condition: service_healthy
       networks:
         - web-net
         - postgres-net
       env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     command: python -We -bb backend/manage.py runserver 0.0.0.0:8000
 
+  celery_worker:
+    <<: *web
+    environment:
+        PYTHONPATH: /code/backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: python -m celery -A employeebook.celery:app worker --loglevel=info
 
-#  celery_worker:
-#    <<: *web
-#    depends_on:
-#      - web
-#      - redis
-#      - rabbitmq
-#    command: python -m celery -A server.celery_app:app worker --loglevel=info
-#
-#  celery_beat:
-#    <<: *web
-#    depends_on:
-#      - web
-#      - redis
-#      - rabbitmq
-#      - celery_worker
-#    command: >
-#      python -m celery -A server.celery_app:app beat
-#      --loglevel=info
-#      --scheduler django_celery_beat.schedulers:DatabaseScheduler
-#
+  celery_beat:
+    <<: *web
+    environment:
+        PYTHONPATH: /code/backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+        python -m celery -A employeebook.celery:app beat
+        --loglevel=info
+        --scheduler django_celery_beat.schedulers:DatabaseScheduler
 
 networks:
-  # Network for postgres, use it for services that need access to the db:
   postgres-net:
-  # Network for your internals, use it by default:
   web-net:
 
 volumes:
