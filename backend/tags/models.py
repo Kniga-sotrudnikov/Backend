@@ -47,7 +47,7 @@ class EmployeeTag(SoftDeleteModel, models.Model):
         blank=True,
         related_name='assigned_employee_tags',
         verbose_name='Кем назначен тег',
-        db_column='assigned_by_id'
+        db_column='assigned_by_id',
     )
     assigned_at = models.DateTimeField(
         verbose_name='Когда назначен тег', default=now, help_text='Дата и время присвоения тега.'

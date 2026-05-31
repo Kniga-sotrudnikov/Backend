@@ -7,7 +7,6 @@ from tags.serializers import TagSerializer
 from tags.services import assign_tags, remove_tags
 
 
-
 def get_request_user(context):
     """Возвращает пользователя, выполнившего запрос."""
     request = context.get('request')
@@ -67,7 +66,7 @@ class EmployeeBriefSerializer(serializers.ModelSerializer):
         return None
 
     def get_tags(self, obj: Employee):
-        """Возвращает только активные (неудаленные) теги"""
+        """Возвращает только активные (неудаленные) теги."""
         active_employee_tags = obj.employee_tags.filter(is_deleted=False).select_related('tag')
         tags = [employee_tag.tag for employee_tag in active_employee_tags]
         return TagSerializer(tags, many=True).data
@@ -95,11 +94,7 @@ class EmployeeAdminDetailSerializer(EmployeeDetailSerializer):
 
 
 class EmployeeCreateSerializer(serializers.ModelSerializer):
-    tags = serializers.ListField(
-        child=serializers.IntegerField(),
-        write_only=True,
-        required=False
-    )
+    tags = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
 
     class Meta:
         model = Employee
@@ -117,7 +112,7 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
         )
 
     def validate_tags(self, value):
-        """Проверяет, что все теги существуют"""
+        """Проверяет, что все теги существуют."""
         if not value:
             return value
 
@@ -125,7 +120,7 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
         missing_tags = set(value) - existing_tags
 
         if missing_tags:
-            raise serializers.ValidationError(f"Теги с id {list(missing_tags)} не существуют")
+            raise serializers.ValidationError(f'Теги с id {list(missing_tags)} не существуют')
         return value
 
     def create(self, validated_data):
@@ -137,11 +132,7 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
 
 
 class EmployeeUpdateSerializer(serializers.ModelSerializer):
-    tags = serializers.ListField(
-        child=serializers.IntegerField(),
-        write_only=True,
-        required=False
-    )
+    tags = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
 
     class Meta:
         model = Employee
@@ -158,9 +149,7 @@ class EmployeeUpdateSerializer(serializers.ModelSerializer):
             'tags',
         )
 
-        extra_kwargs = {
-            'tags': {'required': False}
-        }
+        extra_kwargs = {'tags': {'required': False}}
 
     def update(self, instance, validated_data):
         tag_ids = validated_data.pop('tags', None)
@@ -171,10 +160,7 @@ class EmployeeUpdateSerializer(serializers.ModelSerializer):
             updated_by=user,
         )
         if tag_ids is not None:
-            current_tag_ids = set(
-                employee.employee_tags.filter(is_deleted=False)
-                .values_list('tag_id', flat=True)
-            )
+            current_tag_ids = set(employee.employee_tags.filter(is_deleted=False).values_list('tag_id', flat=True))
             new_tag_ids = set(tag_ids)
             add_ids = list(new_tag_ids - current_tag_ids)
             remove_ids = list(current_tag_ids - new_tag_ids)
