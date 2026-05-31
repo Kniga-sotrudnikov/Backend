@@ -1,5 +1,5 @@
 from django.utils import timezone
-from django.db import transaction, IntegrityError
+from django.db import transaction
 from django.contrib.auth import get_user_model
 from .models import EmployeeTag, Tag
 from employees.models import Employee
@@ -7,6 +7,7 @@ from .validators import validate_employee_tag_assignment
 
 
 User = get_user_model()
+
 
 @transaction.atomic
 def assign_tags(employee: Employee, tag_ids: list[int], by_user: User) -> None:
@@ -21,18 +22,19 @@ def assign_tags(employee: Employee, tag_ids: list[int], by_user: User) -> None:
         missing_tag_ids = set(tag_ids) - existing_tag_ids
         raise ValueError(f"Идентификаторы тегов не найдены: {missing_tag_ids}")
 
-    assigned_tag_ids = set(
-        EmployeeTag.objects.filter(employee=employee, is_deleted=False).values_list('tag_id', flat=True)
-    )
-
-    tags_to_assign = [
-        EmployeeTag(employee=employee, tag_id=tag_id, assigned_by=by_user)
-        for tag_id in tag_ids
-        if tag_id not in assigned_tag_ids
-    ]
-
-    if tags_to_assign:
-        EmployeeTag.objects.bulk_create(tags_to_assign)
+    for tag_id in tag_ids:
+        employee_tag, created = EmployeeTag.all_objects.update_or_create(
+            employee=employee,
+            tag_id=tag_id,
+            defaults={
+                'is_deleted': False,
+                'deleted_at': None,
+                'removed_by': None,
+                'removed_at': None,
+                'assigned_by': by_user,
+                'assigned_at': timezone.now()
+            }
+        )
 
 
 def remove_tags(employee: Employee, tag_ids: list[int], by_user: User) -> None:
@@ -54,3 +56,29 @@ def remove_tags(employee: Employee, tag_ids: list[int], by_user: User) -> None:
                 removed_by=by_user,
                 removed_at=timezone.now()
             )
+
+
+@transaction.atomic
+def bulk_assign_tags(employee_ids: list[int], tag_ids: list[int], by_user: User) -> None:
+    """
+    Массовое назначение тегов нескольким сотрудникам.
+    Если хотя бы одна операция не удалась - откатывает всё.
+    """
+
+    employees = Employee.objects.filter(id__in=employee_ids)
+
+    for employee in employees:
+        assign_tags(employee, tag_ids, by_user)
+
+
+@transaction.atomic
+def bulk_remove_tags(employee_ids: list[int], tag_ids: list[int], by_user: User) -> None:
+    """
+    Массовое снятие тегов с нескольких сотрудников.
+    Если хотя бы одна операция не удалась - откатывает всё.
+    """
+
+    employees = Employee.objects.filter(id__in=employee_ids)
+
+    for employee in employees:
+        remove_tags(employee, tag_ids, by_user)
