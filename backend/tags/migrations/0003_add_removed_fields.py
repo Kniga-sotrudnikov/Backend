@@ -7,7 +7,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('tags', '0002_employeetag'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
@@ -34,16 +33,33 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='employeetag',
             name='removed_at',
-            field=models.DateTimeField(blank=True, help_text='Дата и время удаления тега.', null=True, verbose_name='Когда удален тег'),
+            field=models.DateTimeField(
+                blank=True, help_text='Дата и время удаления тега.', null=True, verbose_name='Когда удален тег'
+            ),
         ),
         migrations.AddField(
             model_name='employeetag',
             name='removed_by',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='removed_employee_tags', to=settings.AUTH_USER_MODEL, verbose_name='Кем удален тег'),
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name='removed_employee_tags',
+                to=settings.AUTH_USER_MODEL,
+                verbose_name='Кем удален тег',
+            ),
         ),
         migrations.AlterField(
             model_name='employeetag',
             name='assigned_by',
-            field=models.ForeignKey(blank=True, db_column='assigned_by_id', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='assigned_employee_tags', to=settings.AUTH_USER_MODEL, verbose_name='Кем назначен тег'),
+            field=models.ForeignKey(
+                blank=True,
+                db_column='assigned_by_id',
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name='assigned_employee_tags',
+                to=settings.AUTH_USER_MODEL,
+                verbose_name='Кем назначен тег',
+            ),
         ),
     ]
