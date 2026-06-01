@@ -21,14 +21,24 @@ ALLOWED_ORDERING_FIELDS = ('full_name', '-full_name', 'birthday', '-birthday')
 
 
 def get_employee_queryset():
-    return (
-        Employee.objects.filter(status=Status.ACTIVE)
-        .select_related('department', 'department__parent', 'user')
-        .prefetch_related('employee_tags__tag')
+    """Возвращает базовый queryset сотрудников с предзагрузкой связанных объектов."""
+    return Employee.objects.select_related('department', 'department__parent', 'user').prefetch_related(
+        'employee_tags__tag'
     )
 
 
 def apply_employee_filters(queryset, request: Request, allow_archived: bool = False):
+    """Применяет фильтры, поиск и сортировку к queryset сотрудников.
+
+    Поддерживает фильтрацию по status, tag, job_title, department_id,
+    direction_id, поиск по подстроке в full_name и job_title, а также
+    сортировку по full_name и birthday.
+
+    Args:
+        queryset: Базовый queryset сотрудников.
+        request: HTTP-запрос с query params.
+        allow_archived: Разрешает фильтрацию по archived для admin-списка.
+    """
     params = request.query_params
     status = params.get('status')
     search = params.get('search')

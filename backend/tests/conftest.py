@@ -2,6 +2,7 @@ import pytest
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 
+from employees.models import Employee
 
 
 User = get_user_model()
@@ -81,3 +82,16 @@ def data_wrong_password(user):
         'password': 'wrong_password123'
     }
 
+
+@pytest.fixture
+def employee_record():
+    def create(full_name, job_title, email, department, birthday='1990-01-01', status='active'):
+        return Employee.objects.create(
+            full_name=full_name,
+            job_title=job_title,
+            email=email,
+            birthday=birthday,
+            department=department,
+            status=status,
+        )
+    return create
