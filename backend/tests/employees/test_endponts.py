@@ -57,6 +57,7 @@ def test_admin_employee_create_endpoint_returns_201(api_client, hr):
     ('query_params_builder', 'expected_name'),
     [
         (lambda data: {'search': 'Петр'}, {'Петр Иванов', 'Мария Петрова'}),
+        (lambda data: {'search': 'dev'}, {'Петр Иванов'}),
         (lambda data: {'job_title': 'Backend Developer'}, {'Петр Иванов'}),
         (lambda data: {'department_id': data['backend_department'].id}, {'Петр Иванов'}),
         (lambda data: {'direction_id': data['it_direction'].id}, {'Петр Иванов'}),
@@ -168,3 +169,44 @@ def test_admin_list_employee_filters_by_archived_status(api_client, hr, employee
     assert response.status_code == 200
     assert response.data['count'] == 1
     assert response.data['results'][0]['status'] == 'archived'
+
+
+@pytest.mark.parametrize(
+    ('ordering', 'expected_results'),
+    [
+        ('full_name', ['Анна Петрова', 'Иван Иванов', 'Петр Петров']),
+        ('-full_name', ['Петр Петров', 'Иван Иванов', 'Анна Петрова']),
+        ('birthday', ['Петр Петров', 'Иван Иванов', 'Анна Петрова']),
+        ('-birthday', ['Анна Петрова', 'Иван Иванов', 'Петр Петров'])
+    ]
+)
+def test_employee_list_ordering(auth_client, employee_record, ordering, expected_results):
+    department = Department.objects.create(
+        name='Backend',
+        type=Department.Type.DEPARTMENT,
+    )
+    employee_record(
+        full_name='Иван Иванов',
+        job_title='Backend Developer',
+        email='ivan@example.com',
+        birthday='1990-01-01',
+        department=department,
+    )
+    employee_record(
+        full_name='Анна Петрова',
+        job_title='Backend Developer',
+        email='anna@example.com',
+        birthday='1992-03-15',
+        department=department,
+    )
+    employee_record(
+        full_name='Петр Петров',
+        job_title='Backend Developer',
+        email='petr@example.com',
+        birthday='1988-07-20',
+        department=department,
+    )
+    response = auth_client.get(reverse('employee-list'), data={'ordering': ordering})
+
+    assert response.status_code == 200
+    assert [item['full_name'] for item in response.data['results']] == expected_results
