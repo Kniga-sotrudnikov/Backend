@@ -32,7 +32,7 @@ class EmployeePDFExportView(APIView):
         )
 
         try:
-            base_url = f'file://{settings.BASE_DIR}/static/'
+            base_url = f'file://{settings.BASE_DIR.parent}/static/'
             pdf_file = HTML(string=html_content, base_url=base_url).write_pdf()
         except Exception:
             raise
