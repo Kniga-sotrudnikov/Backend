@@ -1,7 +1,12 @@
 from django.contrib import admin
+from django.http import HttpResponseRedirect
+from django.shortcuts import render
+from django.urls import reverse
 from employees.models import Employee
+from employees.services import archive_employee
 
-from tags.models import EmployeeTag
+from structure.models import Department
+from tags.models import EmployeeTag, Tag
 
 
 class EmployeeTagInline(admin.TabularInline):
@@ -16,9 +21,56 @@ class EmployeeAdmin(admin.ModelAdmin):
     search_fields = ('full_name', 'email', 'job_title')
     autocomplete_fields = ('department', 'user')
     inlines = (EmployeeTagInline,)
-    actions = ('archive_all',)
+    actions = ('archive_all', 'change_department_action', 'assign_tag_action')
 
     @admin.action(description='массово архивировать')
     def archive_all(self, request, queryset):
-        archived = queryset.update(status='archived')
-        self.message_user(request, f'Архивировано {archived}')
+        employees = list(queryset)
+        for employee in employees:
+            archive_employee(employee=employee, updated_by=request.user)
+        self.message_user(request, f'Архивировано {len(employees)}')
+
+    @admin.action(description='массово сменить отдел')
+    def change_department_action(self, request, queryset):
+        if 'apply' in request.POST:
+            department = Department.objects.get(pk=request.POST['department'])
+            employees = list(queryset)
+            for employee in employees:
+                employee.department = department
+                employee.updated_by = request.user
+                employee.save(update_fields=['department', 'updated_by'])
+            self.message_user(request, f'Отдел изменён для {len(employees)} сотрудников')
+            changelist_url = reverse(f'admin:{self.model._meta.app_label}_{self.model._meta.model_name}_changelist')
+            return HttpResponseRedirect(changelist_url)
+        departments = Department.objects.filter(is_active=True, type=Department.Type.DEPARTMENT)
+        return render(
+            request,
+            'admin/employees/change_department.html',
+            {
+                'queryset': queryset,
+                'departments': departments,
+                **self.admin_site.each_context(request),
+            },
+        )
+
+    @admin.action(description='массово назначить тег')
+    def assign_tag_action(self, request, queryset):
+        if 'apply' in request.POST:
+            tag = Tag.objects.get(pk=request.POST['tag'])
+            EmployeeTag.objects.bulk_create(
+                [EmployeeTag(tag=tag, employee=employee, assigned_by=request.user) for employee in queryset],
+                ignore_conflicts=True,
+            )
+            self.message_user(request, f'Тег «{tag}» назначен сотрудникам')
+            changelist_url = reverse(f'admin:{self.model._meta.app_label}_{self.model._meta.model_name}_changelist')
+            return HttpResponseRedirect(changelist_url)
+        tags = Tag.objects.all()
+        return render(
+            request,
+            'admin/employees/assign_tag.html',
+            {
+                'queryset': queryset,
+                'tags': tags,
+                **self.admin_site.each_context(request),
+            },
+        )
