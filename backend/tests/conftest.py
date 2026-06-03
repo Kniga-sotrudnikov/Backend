@@ -157,5 +157,4 @@ def employee_instance(department):
 @pytest.fixture
 def upload_url(employee_instance):
     """Фикстура для получения URL эндпоинта загрузки фото конкретного сотрудника."""
-    from django.urls import reverse
     return reverse('employee-photo-upload', kwargs={'id': employee_instance.id})

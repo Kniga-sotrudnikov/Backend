@@ -1,13 +1,12 @@
 import os
+
 import pytest
-from PIL import Image
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.urls import reverse
+from employees.models import PHOTO_MAX_WIDTH, THUMB_SIZE
+from PIL import Image
 from rest_framework import status
 
-from employees.models import (
-    PHOTO_MAX_WIDTH,
-    THUMB_SIZE,
-)
 
 pytestmark = pytest.mark.django_db
 
@@ -101,3 +100,58 @@ def test_photo_replacement_removes_old_files_from_disk(
     # Проверяем физическое удаление старых файлов из хранилища
     assert not os.path.exists(old_photo_path)
     assert not os.path.exists(old_thumb_path)
+
+
+def test_employee_list_returns_thumbnail_url(api_client, hr, employee_instance, dummy_image_factory):
+    """Тест API списка: photo_url должен содержать путь к миниатюре (thumb)."""
+    # 1. Сначала загрузим фото сотруднику, чтобы поля заполнились
+    api_client.force_authenticate(user=hr)
+    url_upload = reverse('employee-photo-upload', kwargs={'id': employee_instance.id})
+    image_bytes = dummy_image_factory(200, 200)
+    uploaded_file = SimpleUploadedFile('avatar.jpg', image_bytes, content_type='image/jpeg')
+    api_client.post(url_upload, {'photo': uploaded_file}, format='multipart')
+
+    # 2. Делаем GET-запрос к списку сотрудников (роут 'employee-list' от DefaultRouter)
+    url_list = reverse('employee-list')
+    response = api_client.get(url_list)
+
+    assert response.status_code == status.HTTP_200_OK
+
+    # Находим нашего сотрудника в списке результатов
+    results = response.data if isinstance(response.data, list) else response.data.get('results', [])
+    employee_data = next(emp for emp in results if emp['id'] == employee_instance.id)
+
+    # Проверяем, что в photo_url отдается именно миниатюра (содержит photos/thumbs/)
+    employee_instance.refresh_from_db()
+    assert employee_data['photo_url'] is not None
+    assert 'photos/thumbs/' in employee_data['photo_url']
+
+
+def test_employee_detail_returns_original_photo_url(api_client, hr, employee_instance, dummy_image_factory):
+    """Тест API детальной карточки: photo_url должен содержать путь к оригиналу (originals)."""
+    # 1. Загрузим фото сотруднику
+    api_client.force_authenticate(user=hr)
+    url_upload = reverse('employee-photo-upload', kwargs={'id': employee_instance.id})
+    image_bytes = dummy_image_factory(200, 200)
+    uploaded_file = SimpleUploadedFile('avatar.jpg', image_bytes, content_type='image/jpeg')
+    api_client.post(url_upload, {'photo': uploaded_file}, format='multipart')
+
+    # 2. Делаем GET-запрос к детальной карточке (роут 'employee-detail')
+    url_detail = reverse('employee-detail', kwargs={'pk': employee_instance.id})
+    response = api_client.get(url_detail)
+
+    assert response.status_code == status.HTTP_200_OK
+
+    # Проверяем, что в детальной карточке отдается оригинал (содержит photos/originals/)
+    assert response.data['photo_url'] is not None
+    assert 'photos/originals/' in response.data['photo_url']
+
+
+def test_photo_url_is_null_if_no_photo(api_client, user, employee_instance):
+    """Если у сотрудника нет фото, в API должен возвращаться null."""
+    api_client.force_authenticate(user=user)
+    url_detail = reverse('employee-detail', kwargs={'pk': employee_instance.id})
+    response = api_client.get(url_detail)
+
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data['photo_url'] is None
