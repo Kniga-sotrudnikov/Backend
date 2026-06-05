@@ -1,5 +1,6 @@
 from django.urls import include, path
 from employees.views.employee import EmployeeAdminViewSet, EmployeeViewSet
+from employees.views.pdf import EmployeePDFExportView
 from rest_framework.routers import DefaultRouter
 
 router = DefaultRouter()
@@ -8,4 +9,5 @@ router.register('admin/employees', EmployeeAdminViewSet, basename='admin-employe
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('employees/<int:id>/export/pdf/', EmployeePDFExportView.as_view(), name='employee-pdf-export'),
 ]

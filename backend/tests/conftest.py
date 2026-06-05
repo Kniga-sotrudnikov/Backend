@@ -6,6 +6,9 @@ from django.urls import reverse
 from django.contrib.auth import get_user_model
 
 from employees.models import Employee
+from structure.models import Department
+from tags.models import Tag
+
 
 
 User = get_user_model()
@@ -104,3 +107,38 @@ def employee_record():
 @pytest.fixture
 def celery_app_fixture(_django_setup):
     return celery_app
+
+
+@pytest.fixture
+def department(db):
+    return Department.objects.create(name='Backend', type=Department.Type.DEPARTMENT)
+
+
+@pytest.fixture
+def department_b(db):
+    return Department.objects.create(name='Frontend', type=Department.Type.DEPARTMENT)
+
+
+@pytest.fixture
+def tag(db):
+    return Tag.objects.create(name='Python')
+
+
+@pytest.fixture
+def three_employees(db, department):
+    return [
+        Employee.objects.create(
+            full_name=f'Сотрудник {i}',
+            job_title='Developer',
+            email=f'emp{i}@example.com',
+            birthday='1990-01-01',
+            department=department,
+        )
+        for i in range(3)
+    ]
+
+
+@pytest.fixture
+def hr_client(api_client, hr):
+    api_client.force_authenticate(user=hr)
+    return api_client

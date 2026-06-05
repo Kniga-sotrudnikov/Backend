@@ -123,3 +123,4 @@ htmlcov/
 .dotnet
 .gitconfig
 .local/
+.flake8

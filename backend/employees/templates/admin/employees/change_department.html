@@ -1,0 +1,31 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<h1>Сменить отдел для {{ queryset.count }} сотрудников</h1>
+
+<ul>
+  {% for emp in queryset %}
+    <li>{{ emp.full_name }}</li>
+  {% endfor %}
+</ul>
+
+<form method="post">
+  {% csrf_token %}
+  {% for emp in queryset %}
+    <input type="hidden" name="_selected_action" value="{{ emp.pk }}">
+  {% endfor %}
+  <input type="hidden" name="action" value="change_department_action">
+
+  <label for="department">Выберите новый отдел:</label>
+  <select name="department" id="department" required>
+    {% for dept in departments %}
+      <option value="{{ dept.pk }}">{{ dept.name }}</option>
+    {% endfor %}
+  </select>
+
+  <p>
+    <input type="submit" name="apply" value="Применить">
+    <a href="..">Отмена</a>
+  </p>
+</form>
+{% endblock %}
