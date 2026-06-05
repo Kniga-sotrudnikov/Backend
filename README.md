@@ -14,12 +14,14 @@ cp  .env.example  .env
 ```bash
 docker  compose  up  -d
 ```
+Поднимает все сервисы: web, postgres, redis, celery_worker, celery_beat.
 
 ### Применяем миграции и создаем суперпользователя:
 ```bash
 docker  compose  exec  -it  web  python  backend/manage.py  migrate
 docker  compose  exec  -it  web  python  backend/manage.py  createsuperuser
 ```
+> Примечание: команда migrate применяет в том числе миграции django_celery_beat (таблицы для периодических задач Celery).
 
 ### Доступ к приложению
 * Откройте http://localhost:8000/ в браузере
@@ -70,4 +72,19 @@ docker  compose  down  -v
 ```bash
 docker  compose  build  web
 docker  compose  up  -d
+```
+
+## 📄 PDF генерация (WeasyPrint)
+
+Для генерации PDF-карточек сотрудников используется библиотека WeasyPrint.
+При сборке Docker-образа автоматически устанавливаются системные пакеты:
+- libpango-1.0-0
+- libpangoft2-1.0-0
+- libharfbuzz0b
+- libffi8
+
+Если выполняется локальная разработка без Docker, необходимо установить эти пакеты вручную:
+```bash
+# Для Ubuntu/Debian
+sudo apt-get install libpango1.0-0 libpangoft2-1.0-0 libharfbuzz0b libffi8
 ```

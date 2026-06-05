@@ -38,6 +38,10 @@ RUN apt-get update && apt-get upgrade -y \
     curl \
     gettext \
     git \
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
+    libharfbuzz0b \
+    libffi8 \
     libpq-dev \
     libmagic1 \
   && dpkgArch="$(dpkg --print-architecture | awk -F- '{ print $NF }')" \
