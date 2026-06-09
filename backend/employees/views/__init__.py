@@ -1,3 +1,4 @@
+from .birthday import AdminUpcomingBirthdaysAPIView, EmployeeBirthdaysAPIView
 from .employee import EmployeeAdminViewSet, EmployeeViewSet
 from .media import EmployeePhotoUploadView
 from .pdf import EmployeePDFExportView
@@ -7,4 +8,6 @@ __all__ = (
     'EmployeePhotoUploadView',
     'EmployeeViewSet',
     'EmployeePDFExportView',
+    'AdminUpcomingBirthdaysAPIView',
+    'EmployeeBirthdaysAPIView',
 )
