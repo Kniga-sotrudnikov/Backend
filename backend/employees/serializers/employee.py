@@ -2,7 +2,9 @@ from employees.models import Employee
 from employees.services import EmployeeCreate, EmployeeUpdate, create_employee, update_employee
 from rest_framework import serializers
 
+from tags.models import Tag
 from tags.serializers import TagSerializer
+from tags.services import assign_tags, remove_tags
 
 
 def get_request_user(context):
@@ -70,7 +72,10 @@ class EmployeeBriefSerializer(serializers.ModelSerializer):
         return None
 
     def get_tags(self, obj: Employee):
-        return TagSerializer([employee_tag.tag for employee_tag in obj.employee_tags.all()], many=True).data
+        """Возвращает только активные (неудаленные) теги."""
+        active_employee_tags = obj.employee_tags.filter(is_deleted=False).select_related('tag')
+        tags = [employee_tag.tag for employee_tag in active_employee_tags]
+        return TagSerializer(tags, many=True).data
 
 
 class EmployeeDetailSerializer(EmployeeBriefSerializer):
@@ -110,6 +115,8 @@ class EmployeeAdminDetailSerializer(EmployeeDetailSerializer):
 
 
 class EmployeeCreateSerializer(serializers.ModelSerializer):
+    tags = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
+
     class Meta:
         model = Employee
         fields = (
@@ -122,13 +129,32 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
             'birthday',
             'user',
             'department',
+            'tags',
         )
 
+    def validate_tags(self, value):
+        """Проверяет, что все теги существуют."""
+        if not value:
+            return value
+
+        existing_tags = set(Tag.objects.filter(id__in=value).values_list('id', flat=True))
+        missing_tags = set(value) - existing_tags
+
+        if missing_tags:
+            raise serializers.ValidationError(f'Теги с id {list(missing_tags)} не существуют')
+        return value
+
     def create(self, validated_data):
-        return create_employee(EmployeeCreate(**validated_data), created_by=get_request_user(self.context))
+        tag_ids = validated_data.pop('tags', [])
+        employee = create_employee(EmployeeCreate(**validated_data), created_by=get_request_user(self.context))
+        if tag_ids:
+            assign_tags(employee, tag_ids, by_user=get_request_user(self.context))
+        return employee
 
 
 class EmployeeUpdateSerializer(serializers.ModelSerializer):
+    tags = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
+
     class Meta:
         model = Employee
         fields = (
@@ -141,11 +167,26 @@ class EmployeeUpdateSerializer(serializers.ModelSerializer):
             'birthday',
             'user',
             'department',
+            'tags',
         )
 
+        extra_kwargs = {'tags': {'required': False}}
+
     def update(self, instance, validated_data):
-        return update_employee(
+        tag_ids = validated_data.pop('tags', None)
+        user = get_request_user(self.context)
+        employee = update_employee(
             instance,
             EmployeeUpdate(**validated_data),
-            updated_by=get_request_user(self.context),
+            updated_by=user,
         )
+        if tag_ids is not None:
+            current_tag_ids = set(employee.employee_tags.filter(is_deleted=False).values_list('tag_id', flat=True))
+            new_tag_ids = set(tag_ids)
+            add_ids = list(new_tag_ids - current_tag_ids)
+            remove_ids = list(current_tag_ids - new_tag_ids)
+            if add_ids:
+                assign_tags(employee, add_ids, by_user=user)
+            if remove_ids:
+                remove_tags(employee, remove_ids, by_user=user)
+        return employee
