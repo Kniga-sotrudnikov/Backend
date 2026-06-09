@@ -32,5 +32,5 @@ class AdminUpcomingBirthdaySerializer(serializers.ModelSerializer):
             'department_name': obj.department.name if obj.department else None,
         }
 
-    def get_days_until_birthday(self, obj):
+    def get_days_until(self, obj):
         return calculate_days_until_birthday(obj.birthday)
