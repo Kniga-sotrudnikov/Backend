@@ -1,10 +1,13 @@
 from django.urls import include, path
-from employees.views import (AdminUpcomingBirthdaysAPIView,
-                             EmployeeAdminViewSet, EmployeeBirthdaysAPIView,
-                             EmployeePDFExportView, EmployeePhotoUploadView,
-                             EmployeeViewSet)
+from employees.views import (
+    AdminUpcomingBirthdaysAPIView,
+    EmployeeAdminViewSet,
+    EmployeeBirthdaysAPIView,
+    EmployeePDFExportView,
+    EmployeePhotoUploadView,
+    EmployeeViewSet,
+)
 from rest_framework.routers import DefaultRouter
-
 
 router = DefaultRouter()
 router.register('employees', EmployeeViewSet, basename='employee')
