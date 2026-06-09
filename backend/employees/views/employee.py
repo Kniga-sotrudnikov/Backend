@@ -1,6 +1,7 @@
 from typing import cast
 
 from django.db import transaction
+from django.db.models import Q
 from employees.models import Employee, Status
 from employees.serializers.employee import (
     EmployeeAdminDetailSerializer,
@@ -20,14 +21,59 @@ from accounts.permissions import IsHR
 from structure.models import Department
 from tags.models import EmployeeTag, Tag
 
+ALLOWED_ORDERING_FIELDS = ('full_name', '-full_name', 'birthday', '-birthday')
+
+
+def get_employee_queryset():
+    """Возвращает базовый queryset сотрудников с предзагрузкой связанных объектов."""
+    return Employee.objects.select_related('department', 'department__parent', 'user').prefetch_related(
+        'employee_tags__tag'
+    )
+
+
+def apply_employee_filters(queryset, request: Request, allow_archived: bool = False):
+    """Применяет фильтры, поиск и сортировку к queryset сотрудников.
+
+    Поддерживает фильтрацию по status, tag, job_title, department_id,
+    direction_id, поиск по подстроке в full_name и job_title, а также
+    сортировку по full_name и birthday.
+
+    Args:
+        queryset: Базовый queryset сотрудников.
+        request: HTTP-запрос с query params.
+        allow_archived: Разрешает фильтрацию по archived для admin-списка.
+    """
+    params = request.query_params
+    status = params.get('status')
+    search = params.get('search')
+    tag_ids = params.getlist('tag')
+    job_title = params.get('job_title')
+    department_id = params.get('department_id')
+    direction_id = params.get('direction_id')
+    ordering = params.get('ordering')
+    if allow_archived and status == Status.ARCHIVED:
+        queryset = queryset.filter(status=Status.ARCHIVED)
+    else:
+        queryset = queryset.filter(status=Status.ACTIVE)
+    if search:
+        queryset = queryset.filter(Q(full_name__icontains=search) | Q(job_title__icontains=search))
+    if tag_ids:
+        queryset = queryset.filter(employee_tags__tag_id__in=tag_ids)
+    if job_title:
+        queryset = queryset.filter(job_title=job_title)
+    if department_id:
+        queryset = queryset.filter(department_id=department_id)
+    if direction_id:
+        queryset = queryset.filter(department__parent_id=direction_id)
+    queryset = queryset.distinct()
+    if ordering in ALLOWED_ORDERING_FIELDS:
+        return queryset.order_by(ordering)
+    return queryset
+
 
 class EmployeeViewSet(ReadOnlyModelViewSet):
     def get_queryset(self):
-        return (
-            Employee.objects.filter(status=Status.ACTIVE)
-            .select_related('department', 'department__parent')
-            .prefetch_related('employee_tags__tag')
-        )
+        return apply_employee_filters(get_employee_queryset(), self.request)
 
     def get_serializer_class(self):
         match self.action:
@@ -41,12 +87,14 @@ class EmployeeAdminViewSet(ModelViewSet):
     permission_classes = [IsHR]
 
     def get_queryset(self):
-        queryset = Employee.objects.select_related('department', 'department__parent').prefetch_related(
-            'employee_tags__tag'
-        )
-        if self.request.query_params.get('status') == Status.ARCHIVED:
-            return queryset.filter(status=Status.ARCHIVED)
-        return queryset.filter(status=Status.ACTIVE)
+        queryset = get_employee_queryset()
+        if self.action == 'list':
+            return apply_employee_filters(
+                queryset,
+                self.request,
+                allow_archived=True,
+            )
+        return queryset
 
     def destroy(self, request: Request, *args, **kwargs) -> Response:
         employee = cast(Employee, self.get_object())

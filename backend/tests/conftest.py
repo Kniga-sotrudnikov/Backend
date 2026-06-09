@@ -89,6 +89,20 @@ def data_wrong_password(user):
 
 
 @pytest.fixture
+def employee_record():
+    def create(full_name, job_title, email, department, birthday='1990-01-01', status='active'):
+        return Employee.objects.create(
+            full_name=full_name,
+            job_title=job_title,
+            email=email,
+            birthday=birthday,
+            department=department,
+            status=status,
+        )
+    return create
+
+
+@pytest.fixture
 def celery_app_fixture(_django_setup):
     return celery_app
 
