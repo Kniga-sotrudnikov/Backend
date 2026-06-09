@@ -85,6 +85,7 @@ Thumbs.db
 # Uploads and media
 uploads/
 media/
+mediafiles/
 
 # Temporary files
 *.tmp

@@ -60,7 +60,13 @@ class EmployeeBriefSerializer(serializers.ModelSerializer):
         }
         return f'{obj.birthday.day} {month[obj.birthday.month]}'
 
-    def get_photo_url(self, obj: Employee):
+    def get_photo_url(self, obj: Employee) -> str | None:
+        """Возвращает URL миниатюры для списков."""
+        if obj.photo_thumb:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.photo_thumb.url)
+            return obj.photo_thumb.url
         return None
 
     def get_tags(self, obj: Employee):
@@ -76,16 +82,31 @@ class EmployeeDetailSerializer(EmployeeBriefSerializer):
             'birthday',
             'role_description',
             'department',
-        )
+        )  # type: ignore
+
+    def get_photo_url(self, obj: Employee) -> str | None:
+        """Переопределяет родительский метод для отдачи оригинала в детальной карточке."""
+        if obj.photo:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.photo.url)
+            return obj.photo.url
+        return None
 
 
 class EmployeeAdminDetailSerializer(EmployeeDetailSerializer):
     class Meta(EmployeeDetailSerializer.Meta):
-        fields = EmployeeDetailSerializer.Meta.fields + (
+        fields = EmployeeBriefSerializer.Meta.fields + (
+            'email',
+            'phone',
+            'interests',
+            'birthday',
+            'role_description',
+            'department',
             'created_at',
             'updated_at',
             'created_by',
-        )
+        )  # type: ignore
 
 
 class EmployeeCreateSerializer(serializers.ModelSerializer):

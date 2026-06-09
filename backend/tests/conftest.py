@@ -1,19 +1,17 @@
+import io
+
 import pytest
-
 from django.contrib.auth import get_user_model
-from rest_framework.test import APIClient
 from django.urls import reverse
-from django.contrib.auth import get_user_model
+from PIL import Image
+from rest_framework.test import APIClient, APIRequestFactory
 
+from employeebook.celery import app as celery_app
 from employees.models import Employee
 from structure.models import Department
 from tags.models import Tag
 
-
-
 User = get_user_model()
-
-from employeebook.celery import app as celery_app
 
 
 @pytest.fixture
@@ -23,13 +21,11 @@ def _django_setup():
 
 @pytest.fixture
 def api_client():
-    from rest_framework.test import APIClient
     return APIClient()
 
 
 @pytest.fixture
 def request_factory():
-    from rest_framework.test import APIRequestFactory
     return APIRequestFactory()
 
 
@@ -41,6 +37,7 @@ def user(db):
         password='testpassword123',
     )
 
+
 @pytest.fixture
 def hr(db):
     return User.objects.create_user(
@@ -49,6 +46,7 @@ def hr(db):
         password='hrpassword123',
         role='hr_admin',
     )
+
 
 @pytest.fixture
 def employee(db):
@@ -95,8 +93,22 @@ def celery_app_fixture(_django_setup):
     return celery_app
 
 
+@pytest.fixture(scope="session")
+def dummy_image_factory():
+    """Фабрика для генерации изображений в памяти с настраиваемыми размерами."""
+
+    def _create_image(width=1200, height=800, extension='JPEG'):
+        file_obj = io.BytesIO()
+        image = Image.new('RGB', (width, height), color='blue')
+        image.save(file_obj, format=extension)
+        file_obj.seek(0)
+        return file_obj.read()
+    return _create_image
+
+
 @pytest.fixture
 def department(db):
+    """Фикстура для создания обязательного отдела."""
     return Department.objects.create(name='Backend', type=Department.Type.DEPARTMENT)
 
 
@@ -128,3 +140,21 @@ def three_employees(db, department):
 def hr_client(api_client, hr):
     api_client.force_authenticate(user=hr)
     return api_client
+
+
+@pytest.fixture
+def employee_instance(department):
+    """Фикстура для создания карточки сотрудника (инстанс модели Employee)."""
+    return Employee.objects.create(
+        full_name='Иванов Иван Иванович',
+        job_title='Разработчик',
+        email='ivanov_photo@company.com',
+        birthday='1990-01-01',
+        department=department
+    )
+
+
+@pytest.fixture
+def upload_url(employee_instance):
+    """Фикстура для получения URL эндпоинта загрузки фото конкретного сотрудника."""
+    return reverse('employee-photo-upload', kwargs={'id': employee_instance.id})
