@@ -95,7 +95,7 @@ class OrgStructureTreeView(APIView):
         roots = (
             Department.objects.all()
             .filter(parent__isnull=True)
-            .prefetch_related(Prefetch('children', queryset=Department.objects.active(), to_attr='prefetched_children'))
+            .prefetch_related(Prefetch('children', queryset=Department.objects.all(), to_attr='prefetched_children'))
         )
 
         serializer = OrgTreeNodeSerializer(roots, many=True)
