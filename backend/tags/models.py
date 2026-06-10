@@ -2,6 +2,8 @@ from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils.timezone import now
 
+from core.models import SoftDeleteModel
+
 User = get_user_model()
 
 
@@ -27,7 +29,7 @@ class Tag(models.Model):
         return self.name
 
 
-class EmployeeTag(models.Model):
+class EmployeeTag(SoftDeleteModel, models.Model):
     """
     Связующая модель для назначения тегов сотрудникам.
 
@@ -45,9 +47,21 @@ class EmployeeTag(models.Model):
         blank=True,
         related_name='assigned_employee_tags',
         verbose_name='Кем назначен тег',
+        db_column='assigned_by_id',
     )
     assigned_at = models.DateTimeField(
         verbose_name='Когда назначен тег', default=now, help_text='Дата и время присвоения тега.'
+    )
+    removed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='removed_employee_tags',
+        verbose_name='Кем удален тег',
+    )
+    removed_at = models.DateTimeField(
+        verbose_name='Когда удален тег', null=True, blank=True, help_text='Дата и время удаления тега.'
     )
 
     class Meta:
