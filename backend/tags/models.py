@@ -13,12 +13,6 @@ class Tag(models.Model):
     name = models.CharField(
         verbose_name='Название тега', max_length=100, unique=True, help_text='Название тега должно быть уникальным.'
     )
-    color_or_icon = models.CharField(
-        verbose_name='Цвет или иконка',
-        max_length=50,
-        blank=True,
-        help_text=('Цветовое обозначение (например, #FF0000)или идентификатор значка.'),
-    )
 
     class Meta:
         verbose_name = 'Тег'
