@@ -109,7 +109,6 @@ class TagFactory(DjangoModelFactory):
 
     Attributes:
         name: Уникальное слово с заглавной буквы, генерируется Faker.
-        color_or_icon: HEX-цвет, генерируется Faker.
     """
 
     class Meta:
@@ -117,7 +116,6 @@ class TagFactory(DjangoModelFactory):
         django_get_or_create = ('name',)
 
     name = factory.LazyAttribute(lambda _: fake.unique.word().capitalize())
-    color_or_icon = factory.LazyAttribute(lambda _: fake.hex_color())
 
 
 class EmployeeFactory(DjangoModelFactory):

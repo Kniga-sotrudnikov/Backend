@@ -5,7 +5,7 @@ from tags.models import EmployeeTag, Tag
 
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):
-    list_display = ('name', 'color_or_icon')
+    list_display = ('name',)
     search_fields = ('name',)
 
 
