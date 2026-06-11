@@ -74,20 +74,6 @@ docker  compose  build  web
 docker  compose  up  -d
 ```
 
-## 📄 PDF генерация (WeasyPrint)
-
-Для генерации PDF-карточек сотрудников используется библиотека WeasyPrint.
-При сборке Docker-образа автоматически устанавливаются системные пакеты:
-- libpango-1.0-0
-- libpangoft2-1.0-0
-- libharfbuzz0b
-- libffi8
-
-Если выполняется локальная разработка без Docker, необходимо установить эти пакеты вручную:
-```bash
-# Для Ubuntu/Debian
-sudo apt-get install libpango1.0-0 libpangoft2-1.0-0 libharfbuzz0b libffi8
-```
 
 ## 🗂️ Тестовые данные
 
