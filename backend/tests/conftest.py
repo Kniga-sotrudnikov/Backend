@@ -72,6 +72,13 @@ def login_url():
 def refresh_url():
     return reverse('token_refresh')
 
+@pytest.fixture
+def favorite_url():
+    return reverse('favorites')
+
+@pytest.fixture
+def favorite_detail_url():
+    return lambda employee_id: reverse('favorites_detail', args=[employee_id])
 
 @pytest.fixture
 def magic_link_verify_url():
@@ -86,6 +93,31 @@ def data_for_success_auth(user):
 @pytest.fixture
 def data_wrong_password(user):
     return {'email': user.email, 'password': 'wrong_password123'}
+
+@pytest.fixture
+def favorite_employee(employee_record, department):
+    return employee_record(
+        full_name='Избранный сотрудник',
+        job_title='Developer',
+        email='favorite_employee@example.com',
+        department=department,
+    )
+
+
+@pytest.fixture
+def data_for_favorite(favorite_employee):
+    return {'employee_id': favorite_employee.id}
+
+@pytest.fixture
+def wrong_data_for_favorite():
+    return {'employee_id': 999}
+
+
+@pytest.fixture
+def user_favorite(db, user, favorite_employee):
+    from favorites.models import Favorite
+    return Favorite.objects.create(user=user, employee=favorite_employee)
+
 
 
 @pytest.fixture
