@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'structure',
     'tags',
     'accounts.apps.AccountsConfig',
+    'favorites.apps.FavoritesConfig',
     'medias',
     'notifications',
 ]

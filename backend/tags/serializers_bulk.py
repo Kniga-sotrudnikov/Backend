@@ -1,6 +1,6 @@
-from employees.models import Employee
 from rest_framework import serializers
 
+from employees.models import Employee
 from tags.models import Tag
 
 
