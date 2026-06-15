@@ -2,6 +2,7 @@ from typing import cast
 
 from django.db import transaction
 from django.db.models import Q
+from drf_spectacular.utils import OpenApiResponse, extend_schema
 from employees.models import Employee, Status
 from employees.serializers.employee import (
     EmployeeAdminDetailSerializer,
@@ -9,6 +10,8 @@ from employees.serializers.employee import (
     EmployeeCreateSerializer,
     EmployeeDetailSerializer,
     EmployeeUpdateSerializer,
+    InaccuracyReportCreateSerializer,
+    InaccuracyReportSerializer,
 )
 from employees.services import archive_employee
 from rest_framework import status
@@ -79,8 +82,26 @@ class EmployeeViewSet(ReadOnlyModelViewSet):
         match self.action:
             case 'retrieve':
                 return EmployeeDetailSerializer
+            case 'report_inaccuracy':
+                return InaccuracyReportCreateSerializer
             case _:
                 return EmployeeBriefSerializer
+
+    @extend_schema(
+        summary='Сообщить о неточности в карточке сотрудника',
+        description='Доступно всем авторизованным пользователям.',
+        responses={
+            status.HTTP_201_CREATED: OpenApiResponse(response=InaccuracyReportSerializer),
+            status.HTTP_404_NOT_FOUND: OpenApiResponse(description='Сотрудник не найден'),
+        },
+    )
+    @action(detail=True, methods=['post'], url_path='report-inaccuracy')
+    def report_inaccuracy(self, request: Request) -> Response:
+        employee = cast(Employee, self.get_object())
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        report = serializer.save(employee=employee, created_by=request.user)
+        return Response(InaccuracyReportSerializer(report).data, status=status.HTTP_201_CREATED)
 
 
 class EmployeeAdminViewSet(ModelViewSet):
