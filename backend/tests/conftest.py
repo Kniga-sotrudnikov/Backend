@@ -5,6 +5,8 @@ from rest_framework.test import APIClient
 from django.urls import reverse
 from django.contrib.auth import get_user_model
 
+from vacancies.models import Vacancy
+from structure.models import Department
 
 
 User = get_user_model()
@@ -52,6 +54,47 @@ def employee(db):
         username='employee',
         email='employee@example.com',
         password='employeepassword123',
+    )
+
+
+@pytest.fixture
+def vacancy(db, department):
+    """Тестовая вакансия."""
+
+    return Vacancy.objects.create(
+        title='Backend Dev',
+        department=department,
+        description='Python dev',
+        status='open',
+    )
+
+
+@pytest.fixture
+def vacancy_factory(db, department):
+    """
+    Factory для создания вакансий в тестах.
+    """
+
+    def create(**kwargs):
+        return Vacancy.objects.create(
+            title=kwargs.get("title", "Dev"),
+            department=department,
+            description="desc",
+            status=kwargs.get("status", "open"),
+        )
+    return create
+
+
+@pytest.fixture
+def department(db):
+    """Тестовый департамент."""
+
+    return Department.objects.create(
+        name="IT",
+        short_name="IT",
+        type="department",
+        display_order=1,
+        is_active=True,
     )
 
 

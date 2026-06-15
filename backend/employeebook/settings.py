@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     'accounts.apps.AccountsConfig',
     'medias',
     'notifications',
+    'vacancies',
 ]
 
 MIDDLEWARE = [
