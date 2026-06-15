@@ -31,6 +31,13 @@ class Status(models.TextChoices):
     ARCHIVED = 'archived', 'Архивированный'
 
 
+class InaccuracyReportStatus(models.TextChoices):
+    """Статусы обращения о неточности в карточке сотрудника."""
+
+    NEW = 'new', 'Новое'
+    RESOLVED = 'resolved', 'Решено'
+
+
 class Employee(BaseModel, SoftDeleteModel):
     """Карточка сотрудника организации."""
 
@@ -214,3 +221,38 @@ class Employee(BaseModel, SoftDeleteModel):
         # Синхронизируем update_fields, если они были переданы
         if update_fields is not None:
             kwargs['update_fields'] = list(set(update_fields).union({'photo', 'photo_thumb'}))
+
+
+class InaccuracyReport(models.Model):
+    """Обращение пользователя о неточности в карточке сотрудника."""
+
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name='inaccuracy_reports',
+        verbose_name='Сотрудник',
+    )
+    message = models.TextField(verbose_name='Сообщение')
+    status = models.CharField(
+        max_length=STATUS_MAX_LENGTH,
+        choices=InaccuracyReportStatus.choices,
+        default=InaccuracyReportStatus.NEW,
+        verbose_name='Статус',
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='created_inaccuracy_reports',
+        verbose_name='Кем создано',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создано')
+
+    class Meta:
+        verbose_name = 'Обращение о неточности'
+        verbose_name_plural = 'Обращения о неточностях'
+        ordering = ('-created_at',)
+
+    def __str__(self):
+        return f'Обращение {self.pk} по {self.employee}'
