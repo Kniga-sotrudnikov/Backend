@@ -16,6 +16,7 @@ class EmployeePhotoUploadView(UpdateAPIView):
     parser_classes = (MultiPartParser,)
     permission_classes = (IsHR,)
     lookup_field = 'id'
+    http_method_names = ['post', 'patch', 'head', 'options']
 
     def post(self, request, *args, **kwargs):
         instance = self.get_object()
