@@ -53,7 +53,7 @@ class OrgTreeNodeSerializer(serializers.ModelSerializer):
     def get_children(self, obj):
         """Использует предзагруженные данные из prefetch_related."""
         # Если данные были предзагружены, берем их из атрибута, чтобы не было запроса в БД
-        children = getattr(obj, 'prefetched_children', obj.children.active())
+        children = getattr(obj, 'prefetched_children', obj.children.all())
         if children:
             return OrgTreeNodeSerializer(children, many=True).data
         return tuple()
