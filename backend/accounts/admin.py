@@ -14,3 +14,5 @@ class UserAdmin(UserAdmin):
         'is_active',
     )
     search_fields = ('email',)
+    fieldsets = UserAdmin.fieldsets + (('Роль', {'fields': ('role',)}),)
+    add_fieldsets = UserAdmin.add_fieldsets + (('Роль', {'fields': ('role',)}),)

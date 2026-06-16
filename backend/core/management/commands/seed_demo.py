@@ -119,8 +119,8 @@ class Command(BaseCommand):
         сначала дочерние отделы, затем направления.
         """
         from django.contrib.auth import get_user_model
-        from employees.models import Employee
 
+        from employees.models import Employee
         from structure.models import Department
         from tags.models import EmployeeTag, Tag
 
@@ -192,7 +192,7 @@ class Command(BaseCommand):
         Returns:
             Список из 10 объектов Tag.
         """
-        return [TagFactory(name=name, color_or_icon=color) for name, color in TAG_DATA]
+        return [TagFactory(name=name) for name in TAG_DATA]
 
     def _seed_employees(self, departments, tags, emp_users):
         """Создаёт 18 карточек сотрудников и назначает им случайные теги.

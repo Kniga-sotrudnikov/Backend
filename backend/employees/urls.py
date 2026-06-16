@@ -9,6 +9,7 @@ from employees.views import (
 )
 from rest_framework.routers import DefaultRouter
 
+
 router = DefaultRouter()
 router.register('employees', EmployeeViewSet, basename='employee')
 router.register('admin/employees', EmployeeAdminViewSet, basename='admin-employee')

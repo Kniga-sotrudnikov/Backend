@@ -69,9 +69,9 @@ def another_employee(department):
 def tags():
     """Создает тестовые теги"""
     return {
-        'python': Tag.objects.create(name="Python", color_or_icon="#3572A5"),
-        'django': Tag.objects.create(name="Django", color_or_icon="#092E20"),
-        'postgres': Tag.objects.create(name="PostgreSQL", color_or_icon="#336791"),
+        'python': Tag.objects.create(name="Python"),
+        'django': Tag.objects.create(name="Django"),
+        'postgres': Tag.objects.create(name="PostgreSQL"),
     }
 
 

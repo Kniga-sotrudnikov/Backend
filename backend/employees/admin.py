@@ -2,9 +2,9 @@ from django.contrib import admin
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
+
 from employees.models import Employee
 from employees.services import archive_employee
-
 from structure.models import Department
 from tags.models import EmployeeTag, Tag
 

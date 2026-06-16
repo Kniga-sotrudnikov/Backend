@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.utils import timezone
+
 from employees.models import Employee
 
 from .models import EmployeeTag, Tag
