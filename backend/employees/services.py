@@ -2,8 +2,8 @@ from dataclasses import dataclass
 from datetime import date
 
 from django.contrib.auth.base_user import AbstractBaseUser
-from employees.models import Employee, Status
 
+from employees.models import Employee, Status
 from structure.models import Department
 
 

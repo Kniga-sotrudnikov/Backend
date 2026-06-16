@@ -27,11 +27,6 @@ from tags.services import bulk_assign_tags, bulk_remove_tags
         summary='Подробности тега',
         description=READ_ROLES,
     ),
-    update=extend_schema(
-        tags=[TAGS_TAG],
-        summary='Полное обновление тега',
-        description=WRITE_ROLES,
-    ),
     partial_update=extend_schema(
         tags=[TAGS_TAG],
         summary='Частичное обновление тега',
@@ -48,9 +43,10 @@ class TagViewSet(viewsets.ModelViewSet):
 
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
 
     def get_permissions(self):
-        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+        if self.action in ('create', 'partial_update', 'destroy'):
             return [IsHR()]
         return super().get_permissions()
 

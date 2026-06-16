@@ -2,6 +2,13 @@ from typing import cast
 
 from django.db import transaction
 from django.db.models import Q
+from rest_framework import status
+from rest_framework.decorators import action
+from rest_framework.request import Request
+from rest_framework.response import Response
+from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
+
+from accounts.permissions import IsHR
 from employees.models import Employee, Status
 from employees.serializers.employee import (
     EmployeeAdminDetailSerializer,
@@ -11,13 +18,6 @@ from employees.serializers.employee import (
     EmployeeUpdateSerializer,
 )
 from employees.services import archive_employee
-from rest_framework import status
-from rest_framework.decorators import action
-from rest_framework.request import Request
-from rest_framework.response import Response
-from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
-
-from accounts.permissions import IsHR
 from structure.models import Department
 from tags.models import EmployeeTag, Tag
 
@@ -85,6 +85,7 @@ class EmployeeViewSet(ReadOnlyModelViewSet):
 
 class EmployeeAdminViewSet(ModelViewSet):
     permission_classes = [IsHR]
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
 
     def get_queryset(self):
         queryset = get_employee_queryset()
@@ -109,7 +110,7 @@ class EmployeeAdminViewSet(ModelViewSet):
                 return EmployeeAdminDetailSerializer
             case 'create':
                 return EmployeeCreateSerializer
-            case 'update' | 'partial_update':
+            case 'partial_update':
                 return EmployeeUpdateSerializer
             case _:
                 return EmployeeAdminDetailSerializer

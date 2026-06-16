@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'structure',
     'tags',
     'accounts.apps.AccountsConfig',
+    'favorites.apps.FavoritesConfig',
     'medias',
     'notifications',
     'vacancies',
@@ -149,7 +150,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ru-ru'
 
 LOCALE_PATHS = [str(BASE_DIR / 'locale') if DEBUG else '/var/www/django/locale']
 

@@ -26,11 +26,6 @@ from structure.serializers import DepartmentBriefSerializer, DepartmentDetailSer
         summary='Подробности подразделения',
         description=READ_ROLES,
     ),
-    update=extend_schema(
-        tags=[STRUCTURE_TAG],
-        summary='Полное обновление подразделения',
-        description=WRITE_ROLES,
-    ),
     partial_update=extend_schema(
         tags=[STRUCTURE_TAG],
         summary='Частичное обновление подразделения',
@@ -44,6 +39,8 @@ from structure.serializers import DepartmentBriefSerializer, DepartmentDetailSer
 )
 class DepartmentViewSet(viewsets.ModelViewSet):
     """Управление подразделениями с ручной фильтрацией параметров."""
+
+    http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
 
     def get_queryset(self):
         queryset = Department.objects.all()
