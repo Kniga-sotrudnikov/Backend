@@ -119,8 +119,8 @@ class Command(BaseCommand):
         сначала дочерние отделы, затем направления.
         """
         from django.contrib.auth import get_user_model
-        from employees.models import Employee
 
+        from employees.models import Employee
         from structure.models import Department
         from tags.models import EmployeeTag, Tag
 

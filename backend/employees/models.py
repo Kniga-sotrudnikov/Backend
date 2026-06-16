@@ -4,6 +4,11 @@ from io import BytesIO
 from django.conf import settings
 from django.core.files.base import ContentFile
 from django.db import models
+from medias.validators import validate_file_extension, validate_file_size
+from PIL import Image
+
+from core.models import BaseModel, SoftDeleteModel
+from core.storage import HashedFileStorage
 from employees.constants import (
     EMAIL_MAX_LENGTH,
     FULL_NAME_MAX_LENGTH,
@@ -16,11 +21,6 @@ from employees.constants import (
     THUMB_QUALITY,
     THUMB_SIZE,
 )
-from medias.validators import validate_file_extension, validate_file_size
-from PIL import Image
-
-from core.models import BaseModel, SoftDeleteModel
-from core.storage import HashedFileStorage
 from structure.models import Department
 
 

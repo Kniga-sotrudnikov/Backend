@@ -1,11 +1,11 @@
-from employees.models import Employee
-from employees.serializers import EmployeePhotoUploadSerializer
 from rest_framework import status
 from rest_framework.generics import UpdateAPIView
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 
 from accounts.permissions import IsHR
+from employees.models import Employee
+from employees.serializers import EmployeePhotoUploadSerializer
 
 
 class EmployeePhotoUploadView(UpdateAPIView):
@@ -16,6 +16,7 @@ class EmployeePhotoUploadView(UpdateAPIView):
     parser_classes = (MultiPartParser,)
     permission_classes = (IsHR,)
     lookup_field = 'id'
+    http_method_names = ['post', 'patch', 'head', 'options']
 
     def post(self, request, *args, **kwargs):
         instance = self.get_object()

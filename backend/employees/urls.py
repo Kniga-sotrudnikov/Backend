@@ -1,6 +1,7 @@
 from django.urls import include, path
-from employees.views import EmployeeAdminViewSet, EmployeePhotoUploadView, EmployeeViewSet
 from rest_framework.routers import DefaultRouter
+
+from employees.views import EmployeeAdminViewSet, EmployeePhotoUploadView, EmployeeViewSet
 
 router = DefaultRouter()
 router.register('employees', EmployeeViewSet, basename='employee')

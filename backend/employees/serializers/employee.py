@@ -1,7 +1,7 @@
-from employees.models import Employee, InaccuracyReport
-from employees.services import EmployeeCreate, EmployeeUpdate, create_employee, update_employee
 from rest_framework import serializers
 
+from employees.models import Employee, InaccuracyReport
+from employees.services import EmployeeCreate, EmployeeUpdate, create_employee, update_employee
 from tags.models import Tag
 from tags.serializers import TagSerializer
 from tags.services import assign_tags, remove_tags
