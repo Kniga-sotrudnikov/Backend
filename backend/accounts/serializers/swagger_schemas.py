@@ -23,7 +23,7 @@ class TokenPairResponseSerializer(serializers.Serializer):
 class AuthErrorResponseSerializer(serializers.Serializer):
     """Схема ответа при ошибке аутентификации (401 Unauthorized)."""
 
-    detail = serializers.CharField(default='No active account found with the given credentials')
+    detail = serializers.CharField(default='Активных учетных записей с указанными данными не найдено')
     code = serializers.CharField(default='authentication_failed')
     field_errors = serializers.DictField(
         child=serializers.ListField(child=serializers.CharField()), required=False, help_text='Ошибки валидации полей'
