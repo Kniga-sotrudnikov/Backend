@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     'favorites.apps.FavoritesConfig',
     'medias',
     'notifications',
+    'vacancies',
 ]
 
 MIDDLEWARE = [
