@@ -3,9 +3,10 @@ import logging
 from celery import shared_task
 from django.core.mail import send_mail
 from django.utils import timezone
+from notifications.models import BirthdayLog, BirthdayNotificationSettings
+
 from employees.models import Employee
 from employees.utils import get_birthday_days_condition
-from notifications.models import BirthdayLog, BirthdayNotificationSettings
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,7 @@
+from rest_framework import serializers
+
 from employees.models import Employee
 from employees.utils import calculate_days_until_birthday
-from rest_framework import serializers
 
 
 class EmployeeBirthdayBriefSerializer(serializers.ModelSerializer):

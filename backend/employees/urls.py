@@ -1,14 +1,13 @@
 from django.urls import include, path
+from rest_framework.routers import DefaultRouter
+
 from employees.views import (
     AdminUpcomingBirthdaysAPIView,
     EmployeeAdminViewSet,
     EmployeeBirthdaysAPIView,
-    EmployeePDFExportView,
     EmployeePhotoUploadView,
     EmployeeViewSet,
 )
-from rest_framework.routers import DefaultRouter
-
 
 router = DefaultRouter()
 router.register('employees', EmployeeViewSet, basename='employee')
@@ -25,11 +24,6 @@ urlpatterns = [
         'employees/birthdays/',
         EmployeeBirthdaysAPIView.as_view(),
         name='employee-birthdays',
-    ),
-    path(
-        'employees/<int:id>/export/pdf/',
-        EmployeePDFExportView.as_view(),
-        name='employee-pdf-export',
     ),
     path('', include(router.urls)),
 ]
