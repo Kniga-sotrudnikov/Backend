@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
-from employees.models import Employee
+from employees.models import Employee, InaccuracyReport, InaccuracyReportStatus
 from employees.services import archive_employee
 
 from structure.models import Department
@@ -74,3 +74,18 @@ class EmployeeAdmin(admin.ModelAdmin):
                 **self.admin_site.each_context(request),
             },
         )
+
+
+@admin.register(InaccuracyReport)
+class InaccuracyReportAdmin(admin.ModelAdmin):
+    list_display = ('id', 'employee', 'status', 'created_by', 'created_at')
+    list_filter = ('status', 'employee')
+    search_fields = ('employee__full_name', 'message', 'created_by__email')
+    readonly_fields = ('employee', 'message', 'created_by', 'created_at')
+    autocomplete_fields = ('employee',)
+    actions = ('mark_as_resolved',)
+
+    @admin.action(description='пометить решённым')
+    def mark_as_resolved(self, request, queryset):
+        updated_count = queryset.update(status=InaccuracyReportStatus.RESOLVED)
+        self.message_user(request, f'Помечено решёнными: {updated_count}')

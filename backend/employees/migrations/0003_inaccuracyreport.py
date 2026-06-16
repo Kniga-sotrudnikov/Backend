@@ -6,7 +6,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('employees', '0002_employee_photo_employee_photo_thumb'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
@@ -18,10 +17,36 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('message', models.TextField(verbose_name='Сообщение')),
-                ('status', models.CharField(choices=[('new', 'Новое'), ('resolved', 'Решено')], default='new', max_length=20, verbose_name='Статус')),
+                (
+                    'status',
+                    models.CharField(
+                        choices=[('new', 'Новое'), ('resolved', 'Решено')],
+                        default='new',
+                        max_length=20,
+                        verbose_name='Статус',
+                    ),
+                ),
                 ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Создано')),
-                ('created_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='created_inaccuracy_reports', to=settings.AUTH_USER_MODEL, verbose_name='Кем создано')),
-                ('employee', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='inaccuracy_reports', to='employees.employee', verbose_name='Сотрудник')),
+                (
+                    'created_by',
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name='created_inaccuracy_reports',
+                        to=settings.AUTH_USER_MODEL,
+                        verbose_name='Кем создано',
+                    ),
+                ),
+                (
+                    'employee',
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name='inaccuracy_reports',
+                        to='employees.employee',
+                        verbose_name='Сотрудник',
+                    ),
+                ),
             ],
             options={
                 'verbose_name': 'Обращение о неточности',

@@ -1,7 +1,8 @@
 import pytest
 from django.urls import reverse
 
-from employees.models import Employee
+from employees.models import Employee, InaccuracyReport
+from employees.views import employee as employee_views
 from structure.models import Department
 from tags.models import Tag, EmployeeTag
 
@@ -210,3 +211,83 @@ def test_employee_list_ordering(auth_client, employee_record, ordering, expected
 
     assert response.status_code == 200
     assert [item['full_name'] for item in response.data['results']] == expected_results
+
+
+@pytest.mark.django_db
+def test_report_inaccuracy_creates_report_returns_201(
+    auth_client,
+    user,
+    employee_record,
+):
+    department = Department.objects.create(
+        name='Backend',
+        type=Department.Type.DEPARTMENT,
+    )
+    employee = employee_record(
+        full_name='Иван Иванов',
+        job_title='Backend Developer',
+        email='ivan-report@example.com',
+        department=department,
+    )
+    response = auth_client.post(
+        reverse('employee-report-inaccuracy', kwargs={'pk': employee.id}),
+        data={'message': 'Неверно указан телефон'},
+        format='json',
+    )
+
+    assert response.status_code == 201
+    assert response.data['employee_id'] == employee.id
+    assert response.data['message'] == 'Неверно указан телефон'
+    assert response.data['status'] == 'new'
+    assert response.data['created_at']
+
+    report = InaccuracyReport.objects.get(id=response.data['id'])
+    assert report.employee == employee
+    assert report.created_by == user
+
+
+@pytest.mark.django_db
+def test_report_inaccuracy_returns_404_for_missing_employee(auth_client):
+    response = auth_client.post(
+        reverse('employee-report-inaccuracy', kwargs={'pk': 999999}),
+        data={'message': 'Карточка не найдена'},
+        format='json',
+    )
+
+    assert response.status_code == 404
+    assert InaccuracyReport.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_report_inaccuracy_enqueues_hr_notification(
+    auth_client,
+    employee_record,
+    django_capture_on_commit_callbacks,
+    monkeypatch,
+):
+    department = Department.objects.create(
+        name='Backend',
+        type=Department.Type.DEPARTMENT,
+    )
+    employee = employee_record(
+        full_name='Иван Иванов',
+        job_title='Backend Developer',
+        email='ivan-task@example.com',
+        department=department,
+    )
+    called_report_ids = []
+
+    def fake_delay(report_id):
+        called_report_ids.append(report_id)
+
+    monkeypatch.setattr(employee_views.notify_hr_about_inaccuracy_report, 'delay', fake_delay)
+
+    with django_capture_on_commit_callbacks(execute=True):
+        response = auth_client.post(
+            reverse('employee-report-inaccuracy', kwargs={'pk': employee.id}),
+            data={'message': 'Неверно указан отдел'},
+            format='json',
+        )
+
+    assert response.status_code == 201
+    assert called_report_ids == [response.data['id']]
