@@ -41,8 +41,8 @@ def notify_hr_about_inaccuracy_report(report_id: int) -> dict:
     )
     logger.info(message)
     return {'sent': len(hr_emails), 'report_id': report.id}
-  
-  
+
+
 @shared_task(name='notifications.tasks.check_upcoming_birthdays')
 def check_upcoming_birthdays() -> str:
     """Ежедневная таска для проверки ДР и уведомления HR."""
