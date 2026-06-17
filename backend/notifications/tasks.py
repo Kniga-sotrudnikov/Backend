@@ -1,7 +1,6 @@
 import logging
 
 from celery import shared_task
-
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.mail import send_mail
