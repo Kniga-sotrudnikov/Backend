@@ -5,7 +5,7 @@ from employees.models import Employee
 
 
 def test_employee_lifecycle_integration_flow(db, hr, user, department, tag):
-    '''Интеграционный тест: создание -> выдача -> архивация -> видимость в админке.'''
+    """Интеграционный тест: создание -> выдача -> архивация -> видимость в админке."""
 
     hr_client = APIClient()
     hr_client.force_authenticate(user=hr)
