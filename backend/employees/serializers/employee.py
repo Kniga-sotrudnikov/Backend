@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from employees.models import Employee
+from employees.models import Employee, InaccuracyReport
 from employees.services import EmployeeCreate, EmployeeUpdate, create_employee, update_employee
 from tags.models import Tag
 from tags.serializers import TagSerializer
@@ -190,3 +190,21 @@ class EmployeeUpdateSerializer(serializers.ModelSerializer):
             if remove_ids:
                 remove_tags(employee, remove_ids, by_user=user)
         return employee
+
+
+class InaccuracyReportCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InaccuracyReport
+        fields = ('message',)
+
+
+class InaccuracyReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InaccuracyReport
+        fields = (
+            'id',
+            'employee_id',
+            'message',
+            'created_at',
+            'status',
+        )

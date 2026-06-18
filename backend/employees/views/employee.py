@@ -1,7 +1,10 @@
+import logging
 from typing import cast
 
 from django.db import transaction
 from django.db.models import Q
+from drf_spectacular.utils import OpenApiResponse, extend_schema
+from notifications.tasks import notify_hr_about_inaccuracy_report
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.request import Request
@@ -16,12 +19,15 @@ from employees.serializers.employee import (
     EmployeeCreateSerializer,
     EmployeeDetailSerializer,
     EmployeeUpdateSerializer,
+    InaccuracyReportCreateSerializer,
+    InaccuracyReportSerializer,
 )
 from employees.services import archive_employee
 from structure.models import Department
 from tags.models import EmployeeTag, Tag
 
 ALLOWED_ORDERING_FIELDS = ('full_name', '-full_name', 'birthday', '-birthday')
+logger = logging.getLogger(__name__)
 
 
 def get_employee_queryset():
@@ -79,8 +85,33 @@ class EmployeeViewSet(ReadOnlyModelViewSet):
         match self.action:
             case 'retrieve':
                 return EmployeeDetailSerializer
+            case 'report_inaccuracy':
+                return InaccuracyReportCreateSerializer
             case _:
                 return EmployeeBriefSerializer
+
+    @extend_schema(
+        summary='Сообщить о неточности в карточке сотрудника',
+        description='Доступно всем авторизованным пользователям.',
+        responses={
+            status.HTTP_201_CREATED: OpenApiResponse(response=InaccuracyReportSerializer),
+            status.HTTP_404_NOT_FOUND: OpenApiResponse(description='Сотрудник не найден'),
+        },
+    )
+    @action(detail=True, methods=['post'], url_path='report-inaccuracy')
+    def report_inaccuracy(self, request: Request, pk=None) -> Response:
+        employee = cast(Employee, self.get_object())
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        report = serializer.save(employee=employee, created_by=request.user)
+        transaction.on_commit(lambda: self._enqueue_inaccuracy_report_notification(report.id))
+        return Response(InaccuracyReportSerializer(report).data, status=status.HTTP_201_CREATED)
+
+    def _enqueue_inaccuracy_report_notification(self, report_id: int) -> None:
+        try:
+            notify_hr_about_inaccuracy_report.delay(report_id)
+        except Exception:
+            logger.exception(f'Ошибка постановки в очередь уведомления HR о неточности в карточке {report_id}')
 
 
 class EmployeeAdminViewSet(ModelViewSet):
