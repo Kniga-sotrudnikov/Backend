@@ -287,3 +287,13 @@ def employee_instance(department):
 def upload_url(employee_instance):
     """Фикстура для получения URL эндпоинта загрузки фото конкретного сотрудника."""
     return reverse('employee-photo-upload', kwargs={'id': employee_instance.id})
+
+
+@pytest.fixture
+def matrix_data(db, department, tag, employee_instance):
+    """Возвращает ID базовых сущностей для параметризованных тестов."""
+    return {
+        'dept_id': department.id,
+        'tag_id': tag.id,
+        'emp_id': employee_instance.id
+    }
