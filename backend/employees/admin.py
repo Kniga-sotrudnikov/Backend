@@ -2,10 +2,8 @@ from django.contrib import admin
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
-from django.utils.html import format_html
-from django.utils.translation import gettext_lazy as _
 
-from employees.models import Employee, InaccuracyReport, InaccuracyReportStatus, EmploymentStatus
+from employees.models import Employee, InaccuracyReport, InaccuracyReportStatus
 from employees.services import archive_employee
 from structure.models import Department
 from tags.models import EmployeeTag, Tag

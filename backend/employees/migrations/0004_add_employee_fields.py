@@ -5,7 +5,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ('employees', '0003_inaccuracyreport'),
         ('structure', '0001_initial'),
@@ -25,7 +24,19 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='employee',
             name='employment_status',
-            field=models.CharField(choices=[('working', 'Работает'), ('vacation', 'В отпуске'), ('sick_leave', 'На больничном'), ('maternity_leave', 'В декрете'), ('business_trip', 'В командировке'), ('remote', 'На удалёнке')], default='working', max_length=50, verbose_name='Статус работы'),
+            field=models.CharField(
+                choices=[
+                    ('working', 'Работает'),
+                    ('vacation', 'В отпуске'),
+                    ('sick_leave', 'На больничном'),
+                    ('maternity_leave', 'В декрете'),
+                    ('business_trip', 'В командировке'),
+                    ('remote', 'На удалёнке'),
+                ],
+                default='working',
+                max_length=50,
+                verbose_name='Статус работы',
+            ),
         ),
         migrations.AddField(
             model_name='employee',
@@ -50,21 +61,45 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='employee',
             name='supervisor',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='subordinates', to='employees.employee', verbose_name='Руководитель'),
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name='subordinates',
+                to='employees.employee',
+                verbose_name='Руководитель',
+            ),
         ),
         migrations.AddField(
             model_name='employee',
             name='supervisor_photo',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='supervisor_photos', to='employees.employee', verbose_name='Фото руководителя'),
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name='supervisor_photos',
+                to='employees.employee',
+                verbose_name='Фото руководителя',
+            ),
         ),
         migrations.AddField(
             model_name='employee',
             name='supervisor_role',
-            field=models.ForeignKey(blank=True, limit_choices_to={'type': 'department'}, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='supervisor_roles', to='structure.department', verbose_name='Должность руководителя'),
+            field=models.ForeignKey(
+                blank=True,
+                limit_choices_to={'type': 'department'},
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name='supervisor_roles',
+                to='structure.department',
+                verbose_name='Должность руководителя',
+            ),
         ),
         migrations.AlterField(
             model_name='employee',
             name='role_description',
-            field=models.JSONField(blank=True, default=list, help_text='Список ролей или обязанностей сотрудника', verbose_name='Роль'),
+            field=models.JSONField(
+                blank=True, default=list, help_text='Список ролей или обязанностей сотрудника', verbose_name='Роль'
+            ),
         ),
     ]

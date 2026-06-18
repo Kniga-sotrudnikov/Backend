@@ -300,7 +300,9 @@ class Command(BaseCommand):
 
         # Информация о руководителях
         self.stdout.write(self.style.HTTP_INFO('Руководители:'))
-        supervisors = Employee.objects.filter(supervisor__isnull=False).values_list('supervisor__full_name', flat=True).distinct()
+        supervisors = (
+            Employee.objects.filter(supervisor__isnull=False).values_list('supervisor__full_name', flat=True).distinct()
+        )
         for name in supervisors:
             self.stdout.write(f'  - {name}')
         self.stdout.write('')
@@ -316,6 +318,7 @@ class Command(BaseCommand):
         # Статистика по статусам работы
         self.stdout.write(self.style.HTTP_INFO('Статусы работы сотрудников:'))
         from employees.models import Employee
+
         status_counts = {}
         for status in EMPLOYMENT_STATUSES:
             count = Employee.objects.filter(employment_status=status).count()

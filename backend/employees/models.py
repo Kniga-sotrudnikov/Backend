@@ -33,6 +33,7 @@ class Status(models.TextChoices):
 
 class EmploymentStatus(models.TextChoices):
     """Статусы занятости сотрудника."""
+
     WORKING = 'working', 'Работает'
     VACATION = 'vacation', 'В отпуске'
     SICK_LEAVE = 'sick_leave', 'На больничном'

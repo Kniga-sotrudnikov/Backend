@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from employees.models import Employee, InaccuracyReport, EmploymentStatus
+from employees.models import Employee, InaccuracyReport
 from employees.services import EmployeeCreate, EmployeeUpdate, create_employee, update_employee
 from tags.models import Tag
 from tags.serializers import TagSerializer
@@ -102,11 +102,13 @@ class EmployeeBriefSerializer(serializers.ModelSerializer):
 
     def get_employment_status_display(self, obj: Employee) -> str:
         """Возвращает человекочитаемое название статуса работы."""
-        return dict(Employee._meta.get_field('employment_status').choices).get(obj.employment_status, obj.employment_status)
+        choices = dict(Employee._meta.get_field('employment_status').choices)
+        return choices.get(obj.employment_status, obj.employment_status)
 
 
 class EmployeeDetailSerializer(EmployeeBriefSerializer):
     """Детальный сериализатор для сотрудника."""
+
     supervisor_detail = serializers.SerializerMethodField()
     supervisor_role_name = serializers.CharField(
         source='supervisor_role.name',
@@ -146,6 +148,15 @@ class EmployeeDetailSerializer(EmployeeBriefSerializer):
 
     def get_photo_url(self, obj: Employee) -> str | None:
         """Переопределяет родительский метод для отдачи оригинала в детальной карточке."""
+        if obj.photo:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.photo.url)
+            return obj.photo.url
+        return None
+
+    def get_photo_original_url(self, obj: Employee) -> str | None:
+        """Возвращает URL оригинального фото для детальной карточки."""
         if obj.photo:
             request = self.context.get('request')
             if request:
@@ -241,13 +252,9 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
         if value is None:
             return []
         if not isinstance(value, list):
-            raise serializers.ValidationError(
-                "role_description должен быть списком строк"
-            )
+            raise serializers.ValidationError('role_description должен быть списком строк')
         if not all(isinstance(item, str) for item in value):
-            raise serializers.ValidationError(
-                "Все элементы role_description должны быть строками"
-            )
+            raise serializers.ValidationError('Все элементы role_description должны быть строками')
         return value
 
     def validate_tags(self, value):
@@ -320,13 +327,9 @@ class EmployeeUpdateSerializer(serializers.ModelSerializer):
         if value is None:
             return []
         if not isinstance(value, list):
-            raise serializers.ValidationError(
-                "role_description должен быть списком строк"
-            )
+            raise serializers.ValidationError('role_description должен быть списком строк')
         if not all(isinstance(item, str) for item in value):
-            raise serializers.ValidationError(
-                "Все элементы role_description должны быть строками"
-            )
+            raise serializers.ValidationError('Все элементы role_description должны быть строками')
         return value
 
     def update(self, instance, validated_data):
