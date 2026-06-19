@@ -145,3 +145,14 @@ class EmployeeFactory(DjangoModelFactory):
     status = 'active'
     department = factory.SubFactory(DepartmentFactory)
     user = None
+    role_description = factory.LazyAttribute(lambda _: [fake.job() for _ in range(random.randint(1, 3))])
+    supervisor = None
+    supervisor_role = None
+    supervisor_photo = None
+    personal_phone = factory.LazyAttribute(lambda _: fake.phone_number())
+    personal_email = factory.LazyAttribute(lambda _: fake.unique.email())
+    crm_profile = factory.LazyAttribute(lambda _: fake.url())
+    social_network = factory.LazyAttribute(lambda _: fake.url())
+    resume_link = factory.LazyAttribute(lambda _: fake.url())
+    city = factory.LazyAttribute(lambda _: fake.city())
+    employment_status = 'working'

@@ -31,6 +31,17 @@ class Status(models.TextChoices):
     ARCHIVED = 'archived', 'Архивированный'
 
 
+class EmploymentStatus(models.TextChoices):
+    """Статусы занятости сотрудника."""
+
+    WORKING = 'working', 'Работает'
+    VACATION = 'vacation', 'В отпуске'
+    SICK_LEAVE = 'sick_leave', 'На больничном'
+    MATERNITY_LEAVE = 'maternity_leave', 'В декрете'
+    BUSINESS_TRIP = 'business_trip', 'В командировке'
+    REMOTE = 'remote', 'На удалёнке'
+
+
 class InaccuracyReportStatus(models.TextChoices):
     """Статусы обращения о неточности в карточке сотрудника."""
 
@@ -68,9 +79,11 @@ class Employee(BaseModel, SoftDeleteModel):
         max_length=JOB_TITLE_MAX_LENGTH,
         verbose_name='Должность',
     )
-    role_description = models.TextField(
+    role_description = models.JSONField(
         blank=True,
+        default=list,
         verbose_name='Роль',
+        help_text='Список ролей или обязанностей сотрудника',
     )
     email = models.EmailField(
         max_length=EMAIL_MAX_LENGTH,
@@ -94,6 +107,70 @@ class Employee(BaseModel, SoftDeleteModel):
         choices=Status.choices,
         default=Status.ACTIVE,
         verbose_name='Статус',
+    )
+    supervisor = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='subordinates',
+        verbose_name='Руководитель',
+    )
+    supervisor_role = models.ForeignKey(
+        'structure.Department',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='supervisor_roles',
+        verbose_name='Должность руководителя',
+        limit_choices_to={'type': 'department'},
+    )
+    supervisor_photo = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='supervisor_photos',
+        verbose_name='Фото руководителя',
+    )
+    personal_phone = models.CharField(
+        max_length=PHONE_MAX_LENGTH,
+        blank=True,
+        null=True,
+        verbose_name='Личный телефон',
+    )
+    personal_email = models.EmailField(
+        blank=True,
+        null=True,
+        verbose_name='Личная почта',
+    )
+    crm_profile = models.URLField(
+        blank=True,
+        null=True,
+        verbose_name='Профиль в CRM',
+    )
+    social_network = models.URLField(
+        blank=True,
+        null=True,
+        verbose_name='Социальная сеть',
+    )
+    resume_link = models.URLField(
+        blank=True,
+        null=True,
+        verbose_name='Ссылка на резюме',
+    )
+    city = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        db_index=True,
+        verbose_name='Город',
+    )
+    employment_status = models.CharField(
+        max_length=50,
+        choices=EmploymentStatus.choices,
+        default=EmploymentStatus.WORKING,
+        verbose_name='Статус работы',
     )
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL,

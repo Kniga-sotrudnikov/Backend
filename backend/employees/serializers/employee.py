@@ -24,6 +24,12 @@ class EmployeeBriefSerializer(serializers.ModelSerializer):
     photo_url = serializers.SerializerMethodField()
     birthday_display = serializers.SerializerMethodField()
     tags = serializers.SerializerMethodField()
+    supervisor_name = serializers.SerializerMethodField()
+    supervisor_id = serializers.SerializerMethodField()
+    employment_status_display = serializers.CharField(
+        source='get_employment_status_display',
+        read_only=True,
+    )
 
     class Meta:
         model = Employee
@@ -37,6 +43,11 @@ class EmployeeBriefSerializer(serializers.ModelSerializer):
             'status',
             'birthday_display',
             'tags',
+            'city',
+            'employment_status',
+            'employment_status_display',
+            'supervisor_name',
+            'supervisor_id',
         )
 
     def get_direction_name(self, obj: Employee) -> str | None:
@@ -77,8 +88,39 @@ class EmployeeBriefSerializer(serializers.ModelSerializer):
         tags = [employee_tag.tag for employee_tag in active_employee_tags]
         return TagSerializer(tags, many=True).data
 
+    def get_supervisor_name(self, obj: Employee) -> str | None:
+        """Возвращает имя руководителя."""
+        if obj.supervisor:
+            return obj.supervisor.full_name
+        return None
+
+    def get_supervisor_id(self, obj: Employee) -> int | None:
+        """Возвращает ID руководителя."""
+        if obj.supervisor:
+            return obj.supervisor.id
+        return None
+
+    def get_employment_status_display(self, obj: Employee) -> str:
+        """Возвращает человекочитаемое название статуса работы."""
+        choices = dict(Employee._meta.get_field('employment_status').choices)
+        return choices.get(obj.employment_status, obj.employment_status)
+
 
 class EmployeeDetailSerializer(EmployeeBriefSerializer):
+    """Детальный сериализатор для сотрудника."""
+
+    supervisor_detail = serializers.SerializerMethodField()
+    supervisor_role_name = serializers.CharField(
+        source='supervisor_role.name',
+        read_only=True,
+    )
+    supervisor_photo_url = serializers.SerializerMethodField()
+    department_id = serializers.IntegerField(
+        source='department.id',
+        read_only=True,
+    )
+    photo_original_url = serializers.SerializerMethodField()
+
     class Meta(EmployeeBriefSerializer.Meta):
         fields = EmployeeBriefSerializer.Meta.fields + (
             'email',
@@ -87,6 +129,21 @@ class EmployeeDetailSerializer(EmployeeBriefSerializer):
             'birthday',
             'role_description',
             'department',
+            'department_id',
+            'department_name',
+            'direction_name',
+            'city',
+            'employment_status',
+            'employment_status_display',
+            'crm_profile',
+            'social_network',
+            'resume_link',
+            'supervisor_detail',
+            'supervisor_role_name',
+            'supervisor_photo_url',
+            'photo_original_url',
+            'created_at',
+            'updated_at',
         )  # type: ignore
 
     def get_photo_url(self, obj: Employee) -> str | None:
@@ -96,6 +153,39 @@ class EmployeeDetailSerializer(EmployeeBriefSerializer):
             if request:
                 return request.build_absolute_uri(obj.photo.url)
             return obj.photo.url
+        return None
+
+    def get_photo_original_url(self, obj: Employee) -> str | None:
+        """Возвращает URL оригинального фото для детальной карточки."""
+        if obj.photo:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.photo.url)
+            return obj.photo.url
+        return None
+
+    def get_supervisor_detail(self, obj: Employee) -> dict | None:
+        """Возвращает детальную информацию о руководителе."""
+        if not obj.supervisor:
+            return None
+
+        supervisor = obj.supervisor
+        return {
+            'id': supervisor.id,
+            'full_name': supervisor.full_name,
+            'job_title': supervisor.job_title,
+            'photo_url': self.get_photo_url(supervisor),
+            'department_name': supervisor.department.name if supervisor.department else None,
+            'department_id': supervisor.department.id if supervisor.department else None,
+        }
+
+    def get_supervisor_photo_url(self, obj: Employee) -> str | None:
+        """Возвращает URL фото руководителя."""
+        if obj.supervisor_photo and obj.supervisor_photo.photo_thumb:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.supervisor_photo.photo_thumb.url)
+            return obj.supervisor_photo.photo_thumb.url
         return None
 
 
@@ -116,6 +206,21 @@ class EmployeeAdminDetailSerializer(EmployeeDetailSerializer):
 
 class EmployeeCreateSerializer(serializers.ModelSerializer):
     tags = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
+    supervisor = serializers.PrimaryKeyRelatedField(
+        queryset=Employee.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    supervisor_role = serializers.PrimaryKeyRelatedField(
+        queryset=Employee._meta.get_field('supervisor_role').remote_field.model.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    supervisor_photo = serializers.PrimaryKeyRelatedField(
+        queryset=Employee.objects.all(),
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = Employee
@@ -125,12 +230,32 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
             'role_description',
             'email',
             'phone',
+            'personal_phone',
+            'personal_email',
             'interests',
             'birthday',
             'user',
             'department',
+            'supervisor',
+            'supervisor_role',
+            'supervisor_photo',
+            'city',
+            'employment_status',
+            'crm_profile',
+            'social_network',
+            'resume_link',
             'tags',
         )
+
+    def validate_role_description(self, value):
+        """Проверяет, что role_description - список строк."""
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise serializers.ValidationError('role_description должен быть списком строк')
+        if not all(isinstance(item, str) for item in value):
+            raise serializers.ValidationError('Все элементы role_description должны быть строками')
+        return value
 
     def validate_tags(self, value):
         """Проверяет, что все теги существуют."""
@@ -154,6 +279,21 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
 
 class EmployeeUpdateSerializer(serializers.ModelSerializer):
     tags = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
+    supervisor = serializers.PrimaryKeyRelatedField(
+        queryset=Employee.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    supervisor_role = serializers.PrimaryKeyRelatedField(
+        queryset=Employee._meta.get_field('supervisor_role').remote_field.model.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    supervisor_photo = serializers.PrimaryKeyRelatedField(
+        queryset=Employee.objects.all(),
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = Employee
@@ -163,14 +303,34 @@ class EmployeeUpdateSerializer(serializers.ModelSerializer):
             'role_description',
             'email',
             'phone',
+            'personal_phone',
+            'personal_email',
             'interests',
             'birthday',
             'user',
             'department',
+            'supervisor',
+            'supervisor_role',
+            'supervisor_photo',
+            'city',
+            'employment_status',
+            'crm_profile',
+            'social_network',
+            'resume_link',
             'tags',
         )
 
         extra_kwargs = {'tags': {'required': False}}
+
+    def validate_role_description(self, value):
+        """Проверяет, что role_description - список строк."""
+        if value is None:
+            return []
+        if not isinstance(value, list):
+            raise serializers.ValidationError('role_description должен быть списком строк')
+        if not all(isinstance(item, str) for item in value):
+            raise serializers.ValidationError('Все элементы role_description должны быть строками')
+        return value
 
     def update(self, instance, validated_data):
         tag_ids = validated_data.pop('tags', None)

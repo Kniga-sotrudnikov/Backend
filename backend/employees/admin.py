@@ -16,10 +16,34 @@ class EmployeeTagInline(admin.TabularInline):
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
-    list_display = ('full_name', 'job_title', 'department', 'status')
-    list_filter = ('status', 'department__type', 'department')
-    search_fields = ('full_name', 'email', 'job_title')
-    autocomplete_fields = ('department', 'user')
+    list_display = (
+        'full_name',
+        'job_title',
+        'department',
+        'city',
+        'employment_status',
+        'status',
+        'supervisor',
+        'email',
+        'phone',
+    )
+    list_filter = (
+        'status',
+        'employment_status',
+        'department__type',
+        'department',
+        'city',
+    )
+    search_fields = (
+        'full_name',
+        'email',
+        'phone',
+        'personal_phone',
+        'personal_email',
+        'city',
+        'job_title',
+    )
+    autocomplete_fields = ('department', 'user', 'supervisor', 'supervisor_role', 'supervisor_photo')
     inlines = (EmployeeTagInline,)
     actions = ('archive_all', 'change_department_action', 'assign_tag_action')
 

@@ -73,6 +73,8 @@ JOB_TITLES = [
     'Технический писатель',
 ]
 
+EMPLOYMENT_STATUSES = ['working', 'vacation', 'sick_leave', 'maternity_leave', 'business_trip', 'remote']
+
 
 class Command(BaseCommand):
     """Заполняет БД воспроизводимыми демо-данными на русском языке.
@@ -208,9 +210,15 @@ class Command(BaseCommand):
         """
         from tags.models import EmployeeTag
 
+        created_employees = []
+
         for i in range(18):
             linked_user = emp_users[i] if i < len(emp_users) else None
 
+            # Выбираем случайный статус работы
+            employment_status = random.choice(EMPLOYMENT_STATUSES)
+
+            # Создаем сотрудника с новыми полями
             employee = EmployeeFactory(
                 email=f'demo_emp_{i + 1}@demo.local',
                 full_name=f'{fake.last_name()} {fake.first_name()} {fake.middle_name()}',
@@ -218,27 +226,113 @@ class Command(BaseCommand):
                 birthday=fake.date_of_birth(minimum_age=22, maximum_age=60),
                 department=random.choice(departments),
                 user=linked_user,
+                # Новые поля
+                city=fake.city(),
+                employment_status=employment_status,
+                personal_phone=fake.phone_number(),
+                personal_email=fake.unique.email(),
+                crm_profile=fake.url(),
+                social_network=fake.url(),
+                resume_link=fake.url(),
+                role_description=[random.choice(JOB_TITLES) for _ in range(random.randint(1, 3))],
+                # Руководитель пока None, назначим позже
+                supervisor=None,
+                supervisor_role=None,
+                supervisor_photo=None,
             )
 
+            created_employees.append(employee)
+
+            # Назначаем теги
             for tag in random.sample(tags, k=random.randint(1, 3)):
                 EmployeeTag.objects.get_or_create(employee=employee, tag=tag)
 
+        # Назначаем руководителей
+        self._assign_supervisors(created_employees)
+
+    def _assign_supervisors(self, employees):
+        """Назначает руководителей для сотрудников.
+
+        Первые 5 сотрудников становятся руководителями.
+        Остальным назначается случайный руководитель из первых 5.
+        """
+        if len(employees) < 5:
+            return
+
+        # Первые 5 сотрудников - руководители
+        supervisors = employees[:5]
+
+        # Назначаем им роль руководителя (если нужно)
+        for supervisor in supervisors:
+            # Назначаем руководителю его отдел как роль
+            supervisor.supervisor_role = supervisor.department
+            supervisor.save(update_fields=['supervisor_role'])
+
+        # Остальным назначаем случайного руководителя из первых 5
+        for employee in employees[5:]:
+            # Выбираем случайного руководителя (не назначаем на себя)
+            available_supervisors = [s for s in supervisors if s.id != employee.id]
+            if available_supervisors:
+                supervisor = random.choice(available_supervisors)
+                employee.supervisor = supervisor
+                employee.supervisor_role = supervisor.department
+                employee.save(update_fields=['supervisor', 'supervisor_role'])
+
     def _print_summary(self):
         """Выводит в stdout итоговую таблицу созданных учётных записей и структуры."""
+        from employees.models import Employee
+
         self.stdout.write('')
         self.stdout.write(self.style.SUCCESS('Демо-данные успешно созданы!'))
         self.stdout.write('')
+
+        # Информация о HR-администраторах
         self.stdout.write(self.style.HTTP_INFO('HR-администраторы:'))
         self.stdout.write(f'  hr1@demo.local  /  {DEMO_PASSWORD}')
         self.stdout.write(f'  hr2@demo.local  /  {DEMO_PASSWORD}')
         self.stdout.write('')
+
+        # Информация о сотрудниках
         self.stdout.write(self.style.HTTP_INFO('Сотрудники (с логином):'))
         for i in range(1, 6):
             self.stdout.write(f'  emp{i}@demo.local  /  {DEMO_PASSWORD}')
         self.stdout.write('')
+
+        # Информация о руководителях
+        self.stdout.write(self.style.HTTP_INFO('Руководители:'))
+        supervisors = (
+            Employee.objects.filter(supervisor__isnull=False).values_list('supervisor__full_name', flat=True).distinct()
+        )
+        for name in supervisors:
+            self.stdout.write(f'  - {name}')
+        self.stdout.write('')
+
+        # Информация о структуре
         self.stdout.write(self.style.HTTP_INFO('Оргструктура:'))
         for dir_name, deps in DEPARTMENT_TREE.items():
             self.stdout.write(f'  {dir_name}')
             for dep in deps:
                 self.stdout.write(f'    - {dep}')
+        self.stdout.write('')
+
+        # Статистика по статусам работы
+        self.stdout.write(self.style.HTTP_INFO('Статусы работы сотрудников:'))
+        from employees.models import Employee
+
+        status_counts = {}
+        for status in EMPLOYMENT_STATUSES:
+            count = Employee.objects.filter(employment_status=status).count()
+            if count > 0:
+                status_counts[status] = count
+
+        status_display = {
+            'working': 'Работает',
+            'vacation': 'В отпуске',
+            'sick_leave': 'На больничном',
+            'maternity_leave': 'В декрете',
+            'business_trip': 'В командировке',
+            'remote': 'На удалёнке',
+        }
+        for status, count in status_counts.items():
+            self.stdout.write(f'  {status_display.get(status, status)}: {count} чел.')
         self.stdout.write('')
