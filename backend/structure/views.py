@@ -1,4 +1,4 @@
-from django.db.models import Prefetch
+from django.db.models import Count, Prefetch, QuerySet
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, viewsets
 from rest_framework.response import Response
@@ -8,6 +8,11 @@ from accounts.permissions import IsHR
 from core.constants import READ_ROLES, STRUCTURE_TAG, WRITE_ROLES
 from structure.models import Department
 from structure.serializers import DepartmentBriefSerializer, DepartmentDetailSerializer, OrgTreeNodeSerializer
+
+
+def get_department_queryset() -> QuerySet[Department]:
+    """Базовый queryset подразделений с аннотацией количества сотрудников."""
+    return Department.objects.annotate(employee_count=Count('employees', distinct=True))
 
 
 @extend_schema_view(
@@ -43,7 +48,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
 
     def get_queryset(self):
-        queryset = Department.objects.all()
+        queryset = get_department_queryset()
 
         dept_type = self.request.query_params.get('type')
         parent_id = self.request.query_params.get('parent_id')
@@ -76,7 +81,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
 class DirectionListView(generics.ListAPIView):
     """Только направления верхнего уровня (parent_id is null)."""
 
-    queryset = Department.objects.all().filter(parent__isnull=True)
+    queryset = get_department_queryset().filter(parent__isnull=True)
     serializer_class = DepartmentBriefSerializer
 
 
@@ -89,10 +94,11 @@ class OrgStructureTreeView(APIView):
     """Полное дерево организации, начиная с направлений верхнего уровня."""
 
     def get(self, request, *args, **kwargs):
+        children_queryset = get_department_queryset()
         roots = (
-            Department.objects.all()
+            get_department_queryset()
             .filter(parent__isnull=True)
-            .prefetch_related(Prefetch('children', queryset=Department.objects.all(), to_attr='prefetched_children'))
+            .prefetch_related(Prefetch('children', queryset=children_queryset, to_attr='prefetched_children'))
         )
 
         serializer = OrgTreeNodeSerializer(roots, many=True)

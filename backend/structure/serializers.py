@@ -6,6 +6,8 @@ from .models import Department
 class DepartmentBriefSerializer(serializers.ModelSerializer):
     """Краткая информация о подразделении для списков."""
 
+    employee_count = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = Department
         fields = (
@@ -13,12 +15,14 @@ class DepartmentBriefSerializer(serializers.ModelSerializer):
             'name',
             'type',
             'display_order',
+            'employee_count',
         )
 
 
 class DepartmentDetailSerializer(serializers.ModelSerializer):
     """Детальная информация о подразделении с вложенными дочерними элементами."""
 
+    employee_count = serializers.IntegerField(read_only=True)
     children = DepartmentBriefSerializer(many=True, read_only=True)
 
     class Meta:
@@ -32,6 +36,7 @@ class DepartmentDetailSerializer(serializers.ModelSerializer):
             'parent',
             'display_order',
             'is_active',
+            'employee_count',
             'children',
         )
 
@@ -39,6 +44,7 @@ class DepartmentDetailSerializer(serializers.ModelSerializer):
 class OrgTreeNodeSerializer(serializers.ModelSerializer):
     """Сериализатор для рекурсивного отображения дерева организации."""
 
+    employee_count = serializers.IntegerField(read_only=True)
     children = serializers.SerializerMethodField()
 
     class Meta:
@@ -47,6 +53,7 @@ class OrgTreeNodeSerializer(serializers.ModelSerializer):
             'id',
             'name',
             'type',
+            'employee_count',
             'children',
         )
 

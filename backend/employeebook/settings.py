@@ -173,7 +173,7 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # Media files (User's uploaded content)
 DEFAULT_FILE_STORAGE = 'core.storage.HashedFileStorage'
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'mediafiles'
+MEDIA_ROOT = Path('/var/www/django/media') if APP_ENV == 'production' else BASE_DIR / 'mediafiles'
 
 
 LOGGING = {
