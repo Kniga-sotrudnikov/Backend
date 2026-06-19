@@ -89,6 +89,15 @@ class VacancyAdminViewSet(ModelViewSet):
         /api/v1/admin/vacancies/{id}/
     """
 
+    http_method_names = [
+        'get',
+        'post',
+        'patch',
+        'delete',
+        'head',
+        'options',
+    ]
+
     permission_classes = [IsHR]
 
     serializer_class = VacancyAdminSerializer
