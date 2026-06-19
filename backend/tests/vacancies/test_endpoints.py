@@ -113,3 +113,27 @@ def test_employee_cannot_create_vacancy(api_client, employee, department):
     )
 
     assert response.status_code == 403
+
+
+def test_hr_cannot_update_vacancy_with_put(
+    api_client,
+    hr,
+    vacancy,
+):
+    """
+    Проверяет, что метод PUT недоступен для вакансий.
+    """
+
+    api_client.force_authenticate(user=hr)
+
+    response = api_client.put(
+        f'/api/v1/admin/vacancies/{vacancy.id}/',
+        {
+            'title': 'New title',
+            'department': vacancy.department.id,
+            'description': vacancy.description,
+            'status': vacancy.status,
+        },
+    )
+
+    assert response.status_code == 405

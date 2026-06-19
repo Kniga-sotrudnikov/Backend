@@ -10,12 +10,19 @@ from accounts.permissions import IsHR
 class BirthdaySettingsAPIView(APIView):
     permission_classes = [IsHR]
 
+    http_method_names = [
+        'get',
+        'patch',
+        'head',
+        'options',
+    ]
+
     def get(self, request):
         settings = BirthdayNotificationSettings.load()
         serializer = BirthdayNotificationSettingsSerializer(settings)
         return Response(serializer.data)
 
-    def put(self, request):
+    def patch(self, request):
         settings = BirthdayNotificationSettings.load()
         serializer = BirthdayNotificationSettingsSerializer(settings, data=request.data, partial=True)
         if serializer.is_valid():

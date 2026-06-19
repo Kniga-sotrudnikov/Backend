@@ -99,13 +99,17 @@ def test_settings_endpoints_and_permissions(api_client, hr, department, user):
     response = api_client.get(url)
     assert response.status_code == status.HTTP_200_OK
 
-    # PUT-запрос проходит успешно
+    # PUT-запрос запрещён
     payload = {
         'email_enabled': False,
         'days_before': 3,
         'recipients': ['hr_manager@company.com'],
     }
     response = api_client.put(url, data=payload, format='json')
+    assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+
+    # Patch-запрос работает успешно
+    response = api_client.patch(url, data=payload, format='json')
     assert response.status_code == status.HTTP_200_OK
     assert response.data['email_enabled'] is False
 
