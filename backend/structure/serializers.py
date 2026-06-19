@@ -6,6 +6,8 @@ from .models import Department
 class DepartmentBriefSerializer(serializers.ModelSerializer):
     """Краткая информация о подразделении для списков."""
 
+    employee_count = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = Department
         fields = (
@@ -13,13 +15,15 @@ class DepartmentBriefSerializer(serializers.ModelSerializer):
             'name',
             'type',
             'display_order',
+            'employee_count',
         )
 
 
 class DepartmentDetailSerializer(serializers.ModelSerializer):
     """Детальная информация о подразделении с вложенными дочерними элементами."""
 
-    children = DepartmentBriefSerializer(many=True, read_only=True)
+    employee_count = serializers.IntegerField(read_only=True)
+    children = serializers.SerializerMethodField()
 
     class Meta:
         model = Department
@@ -32,8 +36,15 @@ class DepartmentDetailSerializer(serializers.ModelSerializer):
             'parent',
             'display_order',
             'is_active',
+            'employee_count',
             'children',
         )
+
+    def get_children(self, obj):
+        children = getattr(obj, 'prefetched_children', None)
+        if children is None:
+            children = obj.children.all()
+        return DepartmentBriefSerializer(children, many=True).data
 
 
 class OrgTreeNodeSerializer(serializers.ModelSerializer):
@@ -52,8 +63,9 @@ class OrgTreeNodeSerializer(serializers.ModelSerializer):
 
     def get_children(self, obj):
         """Использует предзагруженные данные из prefetch_related."""
-        # Если данные были предзагружены, берем их из атрибута, чтобы не было запроса в БД
-        children = getattr(obj, 'prefetched_children', obj.children.all())
+        children = getattr(obj, 'prefetched_children', None)
+        if children is None:
+            children = obj.children.all()
         if children:
             return OrgTreeNodeSerializer(children, many=True).data
         return tuple()

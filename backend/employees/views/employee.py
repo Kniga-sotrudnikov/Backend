@@ -2,7 +2,7 @@ import logging
 from typing import cast
 
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from drf_spectacular.utils import OpenApiResponse, extend_schema
 from notifications.tasks import notify_hr_about_inaccuracy_report
 from rest_framework import status
@@ -32,9 +32,23 @@ logger = logging.getLogger(__name__)
 
 def get_employee_queryset():
     """Возвращает базовый queryset сотрудников с предзагрузкой связанных объектов."""
-    return Employee.objects.select_related('department', 'department__parent', 'user').prefetch_related(
-        'employee_tags__tag'
+    active_tags_prefetch = Prefetch(
+        'employee_tags',
+        queryset=EmployeeTag.objects.filter(is_deleted=False).select_related('tag'),
+        to_attr='prefetched_active_employee_tags',
     )
+    return Employee.objects.select_related(
+        'department',
+        'department__parent',
+        'user',
+        'supervisor',
+        'supervisor__department',
+        'supervisor__department__parent',
+        'supervisor_role',
+        'supervisor_photo',
+        'supervisor_photo__department',
+        'supervisor_photo__department__parent',
+    ).prefetch_related(active_tags_prefetch)
 
 
 def apply_employee_filters(queryset, request: Request, allow_archived: bool = False):

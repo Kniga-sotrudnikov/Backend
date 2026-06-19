@@ -84,7 +84,9 @@ class EmployeeBriefSerializer(serializers.ModelSerializer):
 
     def get_tags(self, obj: Employee):
         """Возвращает только активные (неудаленные) теги."""
-        active_employee_tags = obj.employee_tags.filter(is_deleted=False).select_related('tag')
+        active_employee_tags = getattr(obj, 'prefetched_active_employee_tags', None)
+        if active_employee_tags is None:
+            active_employee_tags = obj.employee_tags.filter(is_deleted=False).select_related('tag')
         tags = [employee_tag.tag for employee_tag in active_employee_tags]
         return TagSerializer(tags, many=True).data
 
