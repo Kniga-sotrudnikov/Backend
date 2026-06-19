@@ -31,7 +31,6 @@ except FileNotFoundError:
 # SECURITY WARNING: don't run with debug turned on in production!
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
-APP_ENV = config('APP_ENV', default='development')
 
 
 ALLOWED_HOSTS = config(
@@ -173,7 +172,7 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # Media files (User's uploaded content)
 DEFAULT_FILE_STORAGE = 'core.storage.HashedFileStorage'
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'mediafiles'
+MEDIA_ROOT = Path('/var/www/django/media')
 
 
 LOGGING = {
