@@ -1,12 +1,16 @@
 import os
+from importlib import reload
+from urllib.parse import urlparse
 
+import employeebook.urls as project_urls
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.urls import reverse
-from employees.models import PHOTO_MAX_WIDTH, THUMB_SIZE
+from django.test import override_settings
+from django.urls import clear_url_caches, reverse
 from PIL import Image
 from rest_framework import status
 
+from employees.models import PHOTO_MAX_WIDTH, THUMB_SIZE
 
 pytestmark = pytest.mark.django_db
 
@@ -155,3 +159,26 @@ def test_photo_url_is_null_if_no_photo(api_client, user, employee_instance):
 
     assert response.status_code == status.HTTP_200_OK
     assert response.data['photo_url'] is None
+
+
+@override_settings(DEBUG=True)
+def test_uploaded_photo_is_accessible_by_media_url(api_client, hr, employee_instance, upload_url, dummy_image_factory):
+    """Загруженное фото должно открываться по URL из API в dev-режиме."""
+    clear_url_caches()
+    reload(project_urls)
+
+    try:
+        api_client.force_authenticate(user=hr)
+        image_bytes = dummy_image_factory(200, 200)
+        uploaded_file = SimpleUploadedFile('avatar.jpg', image_bytes, content_type='image/jpeg')
+
+        response = api_client.post(upload_url, {'photo': uploaded_file}, format='multipart')
+
+        assert response.status_code == status.HTTP_200_OK
+        media_path = urlparse(response.data['photo_url']).path
+
+        media_response = api_client.get(media_path)
+        assert media_response.status_code == status.HTTP_200_OK
+    finally:
+        clear_url_caches()
+        reload(project_urls)
