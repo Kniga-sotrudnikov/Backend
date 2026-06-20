@@ -1,6 +1,7 @@
+from medias.validators import validate_file_size, validate_org_image_extension
 from rest_framework import serializers
 
-from .models import Department
+from .models import Department, OrgStructureImage
 
 
 class DepartmentBriefSerializer(serializers.ModelSerializer):
@@ -64,3 +65,26 @@ class OrgTreeNodeSerializer(serializers.ModelSerializer):
         if children:
             return OrgTreeNodeSerializer(children, many=True).data
         return tuple()
+
+
+class OrgStructureImageSerializer(serializers.ModelSerializer):
+    """Сериализатор для чтения изображения оргструктуры."""
+
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OrgStructureImage
+        fields = ('image_url', 'updated_at')
+
+    def get_image_url(self, obj):
+        request = self.context.get('request')
+        return request.build_absolute_uri(obj.image.url)
+
+
+class OrgStructureImageUploadSerializer(serializers.Serializer):
+    """Сериализатор для загрузки изображения оргструктуры."""
+
+    image = serializers.ImageField(
+        validators=[validate_org_image_extension, validate_file_size],
+        help_text='Изображение оргструктуры (JPEG, PNG до 5MB)',
+    )

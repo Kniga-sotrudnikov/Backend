@@ -2,6 +2,8 @@ from django.conf import settings
 from django.db import models
 
 from core.models import BaseModel, SoftDeleteModel
+from core.storage import HashedFileStorage
+from medias.validators import validate_file_size, validate_org_image_extension
 
 
 class Department(BaseModel, SoftDeleteModel):
@@ -77,3 +79,29 @@ class Department(BaseModel, SoftDeleteModel):
 
     def __str__(self):
         return self.name
+
+
+class OrgStructureImage(models.Model):
+    """Изображение организационной структуры (singleton)."""
+
+    image = models.ImageField(
+        storage=HashedFileStorage(),
+        upload_to='org-structure/',
+        validators=[validate_org_image_extension, validate_file_size],
+        verbose_name='Изображение',
+    )
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Обновлено')
+
+    class Meta:
+        verbose_name = 'Изображение оргструктуры'
+        verbose_name_plural = 'Изображение оргструктуры'
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        try:
+            old = OrgStructureImage.objects.get(pk=1)
+            if old.image and old.image.name != self.image.name:
+                old.image.delete(save=False)
+        except OrgStructureImage.DoesNotExist:
+            pass
+        super().save(*args, **kwargs)

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from structure.models import Department
+from structure.models import Department, OrgStructureImage
 
 
 @admin.register(Department)
@@ -13,3 +13,8 @@ class DepartmentAdmin(admin.ModelAdmin):
         'is_active',
     )
     search_fields = ('name', 'type')
+
+
+@admin.register(OrgStructureImage)
+class OrgStructureImageAdmin(admin.ModelAdmin):
+    readonly_fields = ('updated_at',)

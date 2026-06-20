@@ -1,13 +1,21 @@
 from django.db.models import Count, Prefetch, QuerySet
 from drf_spectacular.utils import extend_schema, extend_schema_view
-from rest_framework import generics, viewsets
+from rest_framework import generics, status, viewsets
+from rest_framework.parsers import MultiPartParser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.permissions import IsHR
 from core.constants import READ_ROLES, STRUCTURE_TAG, WRITE_ROLES
-from structure.models import Department
-from structure.serializers import DepartmentBriefSerializer, DepartmentDetailSerializer, OrgTreeNodeSerializer
+from structure.models import Department, OrgStructureImage
+from structure.serializers import (
+    DepartmentBriefSerializer,
+    DepartmentDetailSerializer,
+    OrgStructureImageSerializer,
+    OrgStructureImageUploadSerializer,
+    OrgTreeNodeSerializer,
+)
 
 
 def get_department_queryset() -> QuerySet[Department]:
@@ -83,6 +91,63 @@ class DirectionListView(generics.ListAPIView):
 
     queryset = get_department_queryset().filter(parent__isnull=True)
     serializer_class = DepartmentBriefSerializer
+
+
+@extend_schema_view(
+    get=extend_schema(
+        tags=[STRUCTURE_TAG],
+        summary='Получить изображение оргструктуры',
+        description=READ_ROLES,
+        responses={200: OrgStructureImageSerializer, 404: None},
+    ),
+    post=extend_schema(
+        tags=[STRUCTURE_TAG],
+        summary='Загрузить изображение оргструктуры',
+        description=WRITE_ROLES,
+        request={'multipart/form-data': OrgStructureImageUploadSerializer},
+        responses={201: OrgStructureImageSerializer},
+    ),
+    patch=extend_schema(
+        tags=[STRUCTURE_TAG],
+        summary='Обновить изображение оргструктуры',
+        description=WRITE_ROLES,
+        request={'multipart/form-data': OrgStructureImageUploadSerializer},
+        responses={200: OrgStructureImageSerializer},
+    ),
+)
+class OrgStructureImageView(APIView):
+    """Singleton-ресурс изображения организационной структуры."""
+
+    parser_classes = (MultiPartParser,)
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [IsAuthenticated()]
+        return [IsHR()]
+
+    def get(self, request):
+        instance = OrgStructureImage.objects.first()
+        if instance is None:
+            return Response({'detail': 'Изображение не найдено.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = OrgStructureImageSerializer(instance, context={'request': request})
+        return Response(serializer.data)
+
+    def post(self, request):
+        serializer = OrgStructureImageUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = OrgStructureImage(image=serializer.validated_data['image'])
+        instance.save()
+        return Response(
+            OrgStructureImageSerializer(instance, context={'request': request}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    def patch(self, request):
+        serializer = OrgStructureImageUploadSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        instance = OrgStructureImage(image=serializer.validated_data['image'])
+        instance.save()
+        return Response(OrgStructureImageSerializer(instance, context={'request': request}).data)
 
 
 @extend_schema(
