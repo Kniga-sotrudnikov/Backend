@@ -12,7 +12,6 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import sys
 from datetime import timedelta
-from importlib.util import find_spec
 from pathlib import Path
 
 from decouple import Config, RepositoryEnv
@@ -87,10 +86,8 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-DEBUG_TOOLBAR_ENABLED = DEBUG and find_spec('debug_toolbar') is not None
-
-if DEBUG_TOOLBAR_ENABLED:
-    INSTALLED_APPS += ['debug_toolbar']
+if DEBUG:
+    INSTALLED_APPS.append('debug_toolbar')
     MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
     INTERNAL_IPS = ['127.0.0.1', 'localhost']
 

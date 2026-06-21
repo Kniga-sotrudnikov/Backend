@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from django.db.models import Count, Prefetch, Q
+from django.db.models import Count, Prefetch, Q, QuerySet
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, viewsets
 from rest_framework.response import Response
@@ -12,7 +12,7 @@ from structure.models import Department
 from structure.serializers import DepartmentBriefSerializer, DepartmentDetailSerializer, OrgTreeNodeSerializer
 
 
-def get_department_queryset():
+def get_department_queryset() -> QuerySet[Department]:
     """Базовый queryset подразделений с аннотацией числа активных сотрудников."""
     return Department.objects.select_related('parent').annotate(
         employee_count=Count(

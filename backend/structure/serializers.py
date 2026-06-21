@@ -50,6 +50,7 @@ class DepartmentDetailSerializer(serializers.ModelSerializer):
 class OrgTreeNodeSerializer(serializers.ModelSerializer):
     """Сериализатор для рекурсивного отображения дерева организации."""
 
+    employee_count = serializers.IntegerField(read_only=True)
     children = serializers.SerializerMethodField()
 
     class Meta:
@@ -58,6 +59,7 @@ class OrgTreeNodeSerializer(serializers.ModelSerializer):
             'id',
             'name',
             'type',
+            'employee_count',
             'children',
         )
 
