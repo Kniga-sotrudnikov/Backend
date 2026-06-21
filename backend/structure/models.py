@@ -1,9 +1,9 @@
 from django.conf import settings
 from django.db import models
+from medias.validators import validate_file_size, validate_org_image_extension
 
 from core.models import BaseModel, SoftDeleteModel
 from core.storage import HashedFileStorage
-from medias.validators import validate_file_size, validate_org_image_extension
 
 
 class Department(BaseModel, SoftDeleteModel):
