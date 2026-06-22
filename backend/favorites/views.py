@@ -6,8 +6,8 @@ from rest_framework.views import APIView
 
 from accounts.permissions import IsHR
 from core.constants import FAVORITES_TAG, READ_ROLES, WRITE_ROLES
-from employees.models import Employee
 from employees.serializers import EmployeeBriefSerializer
+from employees.views.employee import get_employee_queryset
 from favorites.favorite_paginate import paginate_queryset
 from favorites.models import Favorite
 from favorites.serializers import (
@@ -29,12 +29,7 @@ class FavoritesAPIViews(APIView):
     )
     def get(self, request):
         """Пагинированный список сотрудников текущего пользователя, код-статус 200."""
-        favorite_employee_ids = Favorite.objects.filter(user=request.user).values_list('employee_id', flat=True)
-        queryset = (
-            Employee.objects.filter(id__in=favorite_employee_ids)
-            .select_related('department', 'department__parent')
-            .prefetch_related('employee_tags__tag')
-        )
+        queryset = get_employee_queryset().filter(favorited_by__user=request.user).distinct()
         page, paginator = paginate_queryset(queryset, request)
         serializer = EmployeeBriefSerializer(page, many=True, context={'request': request})
         return paginator.get_paginated_response(serializer.data)
@@ -75,7 +70,7 @@ class AdminFavoritesAPIViews(APIView):
     )
     def get(self, request):
         """Пагинированный список всех записей избранного, код-статус 200."""
-        queryset = Favorite.objects.all().select_related('user', 'employee')
+        queryset = Favorite.objects.all().select_related('user', 'employee', 'employee__department')
         page, paginator = paginate_queryset(queryset, request)
         serializer = FavoriteAdminSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)

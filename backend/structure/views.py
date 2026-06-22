@@ -1,4 +1,6 @@
-from django.db.models import Count, Prefetch, QuerySet
+from collections import defaultdict
+
+from django.db.models import Count, Prefetch, Q, QuerySet
 from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, viewsets
 from rest_framework.response import Response
@@ -11,8 +13,14 @@ from structure.serializers import DepartmentBriefSerializer, DepartmentDetailSer
 
 
 def get_department_queryset() -> QuerySet[Department]:
-    """Базовый queryset подразделений с аннотацией количества сотрудников."""
-    return Department.objects.annotate(employee_count=Count('employees', distinct=True))
+    """Базовый queryset подразделений с аннотацией числа активных сотрудников."""
+    return Department.objects.select_related('parent').annotate(
+        employee_count=Count(
+            'employees',
+            filter=Q(employees__status='active', employees__is_deleted=False),
+            distinct=True,
+        )
+    )
 
 
 @extend_schema_view(
@@ -57,6 +65,11 @@ class DepartmentViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(type=dept_type)
         if parent_id:
             queryset = queryset.filter(parent_id=parent_id)
+        if self.action == 'retrieve':
+            children_queryset = get_department_queryset()
+            queryset = queryset.prefetch_related(
+                Prefetch('children', queryset=children_queryset, to_attr='prefetched_children')
+            )
         return queryset
 
     def get_serializer_class(self):
@@ -94,12 +107,16 @@ class OrgStructureTreeView(APIView):
     """Полное дерево организации, начиная с направлений верхнего уровня."""
 
     def get(self, request, *args, **kwargs):
-        children_queryset = get_department_queryset()
-        roots = (
-            get_department_queryset()
-            .filter(parent__isnull=True)
-            .prefetch_related(Prefetch('children', queryset=children_queryset, to_attr='prefetched_children'))
-        )
+        departments = list(get_department_queryset().order_by('display_order', 'name'))
+        children_map: dict[int | None, list[Department]] = defaultdict(list)
+
+        for department in departments:
+            children_map[department.parent_id].append(department)
+
+        for department in departments:
+            department.prefetched_children = children_map.get(department.id, [])
+
+        roots = children_map.get(None, [])
 
         serializer = OrgTreeNodeSerializer(roots, many=True)
         return Response(serializer.data)

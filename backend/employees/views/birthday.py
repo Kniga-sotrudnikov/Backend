@@ -1,3 +1,8 @@
+from functools import reduce
+from operator import or_
+
+from django.db.models import Q
+from django.db.models.functions import ExtractDay, ExtractMonth
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -6,6 +11,23 @@ from accounts.permissions import IsHR
 from employees.models import Employee
 from employees.serializers.birthday import AdminUpcomingBirthdaySerializer, EmployeeBirthdayBriefSerializer
 from employees.utils import calculate_days_until_birthday, get_birthday_days_condition
+
+
+def get_upcoming_birthdays_queryset(days_ahead: int):
+    """Возвращает queryset сотрудников с ближайшими днями рождения."""
+    pairs = get_birthday_days_condition(days_ahead)
+    date_filters = [Q(birthday_month=month, birthday_day=day) for month, day in pairs]
+    birthday_filter = reduce(or_, date_filters, Q())
+
+    return (
+        Employee.objects.filter(status='active', is_deleted=False)
+        .select_related('department')
+        .annotate(
+            birthday_month=ExtractMonth('birthday'),
+            birthday_day=ExtractDay('birthday'),
+        )
+        .filter(birthday_filter)
+    )
 
 
 class EmployeeBirthdaysAPIView(APIView):
@@ -19,18 +41,8 @@ class EmployeeBirthdaysAPIView(APIView):
         except ValueError:
             days_ahead = 7
 
-        pairs = get_birthday_days_condition(days_ahead)
-
-        # Фильтруем только активных и не удаленных сотрудников
-        queryset = Employee.objects.filter(status='active', is_deleted=False)
-
-        # Строим ORM-запрос для комбинаций (месяц, день)
-        matched_employees = []
-        for emp in queryset:
-            if emp.birthday and (emp.birthday.month, emp.birthday.day) in pairs:
-                matched_employees.append(emp)
-
-        serializer = EmployeeBirthdayBriefSerializer(matched_employees, many=True)
+        queryset = get_upcoming_birthdays_queryset(days_ahead)
+        serializer = EmployeeBirthdayBriefSerializer(queryset, many=True)
         return Response(serializer.data)
 
 
@@ -45,14 +57,9 @@ class AdminUpcomingBirthdaysAPIView(APIView):
         except ValueError:
             days_ahead = 30
 
-        pairs = get_birthday_days_condition(days_ahead)
-        queryset = Employee.objects.filter(status='active', is_deleted=False)
-
-        matched_employees = []
-        for emp in queryset:
-            if emp.birthday and (emp.birthday.month, emp.birthday.day) in pairs:
-                emp.days_until = calculate_days_until_birthday(emp.birthday)
-                matched_employees.append(emp)
+        matched_employees = list(get_upcoming_birthdays_queryset(days_ahead))
+        for emp in matched_employees:
+            emp.days_until = calculate_days_until_birthday(emp.birthday)
 
         # сортировка по days_until
         matched_employees.sort(key=lambda x: x.days_until)

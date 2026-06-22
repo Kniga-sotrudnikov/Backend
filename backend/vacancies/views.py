@@ -9,6 +9,11 @@ from vacancies.serializers import VacancyAdminSerializer, VacancyBriefSerializer
 from accounts.permissions import IsHR
 
 
+def get_vacancy_queryset():
+    """Возвращает queryset вакансий с предзагрузкой подразделения."""
+    return Vacancy.objects.select_related('department', 'department__parent')
+
+
 @extend_schema(
     parameters=[
         OpenApiParameter(
@@ -54,7 +59,9 @@ class VacancyViewSet(
         return VacancyBriefSerializer
 
     def get_queryset(self):
-        queryset = Vacancy.objects.select_related('department')
+        queryset = get_vacancy_queryset()
+        if self.action == 'retrieve':
+            queryset = queryset.prefetch_related('department__children')
 
         department_id = self.request.query_params.get('department_id')
 
@@ -102,4 +109,4 @@ class VacancyAdminViewSet(ModelViewSet):
 
     serializer_class = VacancyAdminSerializer
 
-    queryset = Vacancy.objects.select_related('department')
+    queryset = get_vacancy_queryset().prefetch_related('department__children')

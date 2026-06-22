@@ -23,7 +23,7 @@ class DepartmentDetailSerializer(serializers.ModelSerializer):
     """Детальная информация о подразделении с вложенными дочерними элементами."""
 
     employee_count = serializers.IntegerField(read_only=True)
-    children = DepartmentBriefSerializer(many=True, read_only=True)
+    children = serializers.SerializerMethodField()
 
     class Meta:
         model = Department
@@ -39,6 +39,12 @@ class DepartmentDetailSerializer(serializers.ModelSerializer):
             'employee_count',
             'children',
         )
+
+    def get_children(self, obj):
+        children = getattr(obj, 'prefetched_children', None)
+        if children is None:
+            children = obj.children.all()
+        return DepartmentBriefSerializer(children, many=True).data
 
 
 class OrgTreeNodeSerializer(serializers.ModelSerializer):
@@ -59,8 +65,9 @@ class OrgTreeNodeSerializer(serializers.ModelSerializer):
 
     def get_children(self, obj):
         """Использует предзагруженные данные из prefetch_related."""
-        # Если данные были предзагружены, берем их из атрибута, чтобы не было запроса в БД
-        children = getattr(obj, 'prefetched_children', obj.children.all())
+        children = getattr(obj, 'prefetched_children', None)
+        if children is None:
+            children = obj.children.all()
         if children:
             return OrgTreeNodeSerializer(children, many=True).data
         return tuple()
