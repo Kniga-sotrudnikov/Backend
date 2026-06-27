@@ -20,7 +20,7 @@ from favorites.serializers import (
 
 
 class FavoritesAPIViews(APIView):
-    """Пользовательские эндпоинты избранного список, добавление, удаление."""
+    """Пользовательские эндпоинты: список и добавление."""
 
     @extend_schema(
         tags=[FAVORITES_TAG],
@@ -48,6 +48,10 @@ class FavoritesAPIViews(APIView):
         response_serializers = FavoriteResponseSerializers(favorite)
         return Response(response_serializers.data, status=status.HTTP_201_CREATED)
 
+
+class FavoritesDeleteAPIViews(APIView):
+    """Пользовательский эндпоинт: удаление по id."""
+
     @extend_schema(
         tags=[FAVORITES_TAG],
         summary='Удалить сотрудника из избранного',
@@ -61,6 +65,8 @@ class FavoritesAPIViews(APIView):
 
 
 class AdminFavoritesAPIViews(APIView):
+    """Админский эндпоинт: список и добавление."""
+
     permission_classes = [IsHR]
 
     @extend_schema(
@@ -88,6 +94,12 @@ class AdminFavoritesAPIViews(APIView):
         favorite = serializer.save()
         response_serializer = FavoriteAdminResponseSerializer(favorite)
         return Response(response_serializer.data, status=status.HTTP_201_CREATED)
+
+
+class AdminFavoritesDeleteAPIViews(APIView):
+    """Админский эндпоинт: удаление по id."""
+
+    permission_classes = [IsHR]
 
     @extend_schema(
         tags=[FAVORITES_TAG],
