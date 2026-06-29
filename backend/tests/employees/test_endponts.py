@@ -54,6 +54,11 @@ def test_admin_employee_create_endpoint_returns_201(api_client, hr):
     assert employee.created_by == hr
     assert employee.role_description == []
     assert response.data['role_description'] == []
+    assert response.data['id'] == employee.id
+    assert response.data['department_id'] == department.id
+    assert 'supervisor_detail' in response.data
+    assert 'supervisor_photo_url' in response.data
+    assert 'photo_original_url' in response.data
 
 
 @pytest.mark.django_db
@@ -106,6 +111,35 @@ def test_admin_employee_create_rejects_role_description_object(api_client, hr):
 
     assert response.status_code == 400
     assert 'role_description' in response.data['field_errors']
+
+
+@pytest.mark.django_db
+def test_admin_employee_patch_endpoint_returns_detail(api_client, hr, employee_record):
+    api_client.force_authenticate(user=hr)
+    department = Department.objects.create(
+        name='Backend',
+        type=Department.Type.DEPARTMENT,
+    )
+    employee = employee_record(
+        full_name='Иван Иванов',
+        job_title='Backend Developer',
+        email='ivan-patch@example.com',
+        department=department,
+    )
+
+    response = api_client.patch(
+        reverse('admin-employee-detail', kwargs={'pk': employee.id}),
+        data={'job_title': 'Senior Backend Developer'},
+        format='json',
+    )
+
+    assert response.status_code == 200
+    assert response.data['id'] == employee.id
+    assert response.data['job_title'] == 'Senior Backend Developer'
+    assert response.data['department_id'] == department.id
+    assert 'supervisor_detail' in response.data
+    assert 'supervisor_photo_url' in response.data
+    assert 'photo_original_url' in response.data
 
 
 @pytest.mark.parametrize(
