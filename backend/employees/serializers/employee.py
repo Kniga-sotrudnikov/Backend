@@ -111,6 +111,11 @@ class EmployeeBriefSerializer(serializers.ModelSerializer):
 class EmployeeDetailSerializer(EmployeeBriefSerializer):
     """Детальный сериализатор для сотрудника."""
 
+    role_description = serializers.ListField(
+        child=serializers.CharField(),
+        read_only=True,
+        help_text='Список ролей или обязанностей сотрудника',
+    )
     supervisor_detail = serializers.SerializerMethodField()
     supervisor_role_name = serializers.CharField(
         source='supervisor_role.name',
@@ -207,6 +212,13 @@ class EmployeeAdminDetailSerializer(EmployeeDetailSerializer):
 
 
 class EmployeeCreateSerializer(serializers.ModelSerializer):
+    role_description = serializers.ListField(
+        child=serializers.CharField(allow_blank=True),
+        required=False,
+        allow_empty=True,
+        allow_null=True,
+        help_text='Список ролей или обязанностей сотрудника',
+    )
     tags = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
     supervisor = serializers.PrimaryKeyRelatedField(
         queryset=Employee.objects.all(),
@@ -280,6 +292,13 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
 
 
 class EmployeeUpdateSerializer(serializers.ModelSerializer):
+    role_description = serializers.ListField(
+        child=serializers.CharField(allow_blank=True),
+        required=False,
+        allow_empty=True,
+        allow_null=True,
+        help_text='Список ролей или обязанностей сотрудника',
+    )
     tags = serializers.ListField(child=serializers.IntegerField(), write_only=True, required=False)
     supervisor = serializers.PrimaryKeyRelatedField(
         queryset=Employee.objects.all(),

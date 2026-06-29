@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from datetime import date
 
 from django.contrib.auth.base_user import AbstractBaseUser
@@ -15,7 +16,7 @@ class EmployeeCreate:
     birthday: date
     department: Department
     user: AbstractBaseUser | None = None
-    role_description: str = ''
+    role_description: list[str] = dataclass_field(default_factory=list)
     phone: str = ''
     interests: str = ''
 
@@ -28,7 +29,7 @@ class EmployeeUpdate:
     birthday: date | None = None
     department: Department | None = None
     user: AbstractBaseUser | None = None
-    role_description: str | None = None
+    role_description: list[str] | None = None
     phone: str | None = None
     interests: str | None = None
 
