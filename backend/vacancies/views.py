@@ -1,7 +1,7 @@
 from django.db.models import Q
 from django.http import HttpResponse
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
 from rest_framework import mixins
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -14,17 +14,20 @@ from core.xlsx import build_xlsx
 
 XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
+ALLOWED_VACANCY_ORDERING_FIELDS = ('title', '-title', 'created_at', '-created_at', 'status', '-status')
+
 
 def get_vacancy_queryset():
     """Возвращает queryset вакансий с предзагрузкой подразделения."""
     return Vacancy.objects.select_related('department', 'department__parent')
 
 
-def apply_vacancy_export_filters(queryset, request):
-    """Применяет фильтры экспорта вакансий."""
+def apply_vacancy_filters(queryset, request, default_status: str | None = None):
+    """Применяет фильтры и сортировку к queryset вакансий."""
     department_id = request.query_params.get('department_id')
-    status = request.query_params.get('status')
+    status = request.query_params.get('status', default_status)
     search = request.query_params.get('search')
+    ordering = request.query_params.get('ordering')
 
     if department_id:
         queryset = queryset.filter(department_id=department_id)
@@ -32,6 +35,8 @@ def apply_vacancy_export_filters(queryset, request):
         queryset = queryset.filter(status=status)
     if search:
         queryset = queryset.filter(Q(title__icontains=search) | Q(description__icontains=search))
+    if ordering in ALLOWED_VACANCY_ORDERING_FIELDS:
+        queryset = queryset.order_by(ordering)
     return queryset
 
 
@@ -84,21 +89,33 @@ class VacancyViewSet(
         if self.action == 'retrieve':
             queryset = queryset.prefetch_related('department__children')
 
-        department_id = self.request.query_params.get('department_id')
-
-        if department_id:
-            queryset = queryset.filter(department_id=department_id)
-
-        status = self.request.query_params.get(
-            'status',
-            Vacancy.Status.OPEN,
-        )
-
-        queryset = queryset.filter(status=status)
-
-        return queryset
+        return apply_vacancy_filters(queryset, self.request, default_status=Vacancy.Status.OPEN)
 
 
+@extend_schema_view(
+    list=extend_schema(
+        summary='Административный список вакансий',
+        description='Возвращает вакансии для таблицы админки с фильтрами и сортировкой.',
+        parameters=[
+            OpenApiParameter('department_id', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter(
+                'status',
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                enum=[Vacancy.Status.OPEN, Vacancy.Status.CLOSED],
+            ),
+            OpenApiParameter('search', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter(
+                'ordering',
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                enum=ALLOWED_VACANCY_ORDERING_FIELDS,
+            ),
+        ],
+    )
+)
 class VacancyAdminViewSet(ModelViewSet):
     """
     Административный API для управления вакансиями.
@@ -130,7 +147,11 @@ class VacancyAdminViewSet(ModelViewSet):
 
     serializer_class = VacancyAdminSerializer
 
-    queryset = get_vacancy_queryset().prefetch_related('department__children')
+    def get_queryset(self):
+        queryset = get_vacancy_queryset().prefetch_related('department__children')
+        if self.action in ('list', 'export'):
+            return apply_vacancy_filters(queryset, self.request)
+        return queryset
 
     @extend_schema(
         summary='Экспорт вакансий в Excel',
@@ -160,7 +181,7 @@ class VacancyAdminViewSet(ModelViewSet):
     )
     @action(detail=False, methods=['get'], url_path='export')
     def export(self, request) -> HttpResponse:
-        queryset = apply_vacancy_export_filters(self.get_queryset(), request)
+        queryset = self.get_queryset()
         headers = [
             'ID',
             'Название',

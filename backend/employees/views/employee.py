@@ -133,6 +133,31 @@ class EmployeeViewSet(ReadOnlyModelViewSet):
 
 
 @extend_schema_view(
+    list=extend_schema(
+        summary='Административный список сотрудников',
+        description='Возвращает сотрудников для таблицы админки с фильтрами и сортировкой.',
+        parameters=[
+            OpenApiParameter(
+                'status',
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                enum=[Status.ACTIVE, Status.ARCHIVED],
+            ),
+            OpenApiParameter('search', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter('tag', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, many=True),
+            OpenApiParameter('job_title', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter('department_id', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter('direction_id', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter(
+                'ordering',
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                enum=ALLOWED_ORDERING_FIELDS,
+            ),
+        ],
+    ),
     create=extend_schema(
         summary='Создать сотрудника',
         request=EmployeeCreateSerializer,
