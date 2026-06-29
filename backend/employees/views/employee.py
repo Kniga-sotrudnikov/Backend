@@ -3,7 +3,8 @@ from typing import cast
 
 from django.db import transaction
 from django.db.models import Prefetch, Q
-from drf_spectacular.utils import OpenApiResponse, extend_schema
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
 from notifications.tasks import notify_hr_about_inaccuracy_report
 from rest_framework import status
 from rest_framework.decorators import action
@@ -128,6 +129,33 @@ class EmployeeViewSet(ReadOnlyModelViewSet):
             logger.exception(f'Ошибка постановки в очередь уведомления HR о неточности в карточке {report_id}')
 
 
+@extend_schema_view(
+    list=extend_schema(
+        summary='Административный список сотрудников',
+        description='Возвращает сотрудников для таблицы админки с фильтрами и сортировкой.',
+        parameters=[
+            OpenApiParameter(
+                'status',
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                enum=[Status.ACTIVE, Status.ARCHIVED],
+            ),
+            OpenApiParameter('search', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter('tag', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, many=True),
+            OpenApiParameter('job_title', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter('department_id', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter('direction_id', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter(
+                'ordering',
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                enum=ALLOWED_ORDERING_FIELDS,
+            ),
+        ],
+    )
+)
 class EmployeeAdminViewSet(ModelViewSet):
     permission_classes = [IsHR]
     http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']

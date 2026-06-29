@@ -4,7 +4,7 @@ from django.urls import reverse
 from employees.models import Employee, InaccuracyReport
 from employees.views import employee as employee_views
 from structure.models import Department
-from tags.models import Tag, EmployeeTag
+from tags.models import EmployeeTag, Tag
 
 
 @pytest.mark.django_db
@@ -211,6 +211,34 @@ def test_employee_list_ordering(auth_client, employee_record, ordering, expected
 
     assert response.status_code == 200
     assert [item['full_name'] for item in response.data['results']] == expected_results
+
+
+@pytest.mark.django_db
+def test_admin_employee_list_ordering(hr_client, employee_record):
+    """Административный список сотрудников поддерживает сортировку."""
+    department = Department.objects.create(
+        name='Backend',
+        type=Department.Type.DEPARTMENT,
+    )
+    employee_record(
+        full_name='Иван Иванов',
+        job_title='Backend Developer',
+        email='ivan-admin-order@example.com',
+        birthday='1990-01-01',
+        department=department,
+    )
+    employee_record(
+        full_name='Анна Петрова',
+        job_title='Backend Developer',
+        email='anna-admin-order@example.com',
+        birthday='1992-03-15',
+        department=department,
+    )
+
+    response = hr_client.get(reverse('admin-employee-list'), data={'ordering': 'full_name'})
+
+    assert response.status_code == 200
+    assert [item['full_name'] for item in response.data['results']] == ['Анна Петрова', 'Иван Иванов']
 
 
 @pytest.mark.django_db
