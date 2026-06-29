@@ -5,7 +5,7 @@ from django.db import transaction
 from django.db.models import Prefetch, Q
 from django.http import HttpResponse
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
 from notifications.tasks import notify_hr_about_inaccuracy_report
 from rest_framework import status
 from rest_framework.decorators import action
@@ -132,6 +132,18 @@ class EmployeeViewSet(ReadOnlyModelViewSet):
             logger.exception(f'Ошибка постановки в очередь уведомления HR о неточности в карточке {report_id}')
 
 
+@extend_schema_view(
+    create=extend_schema(
+        summary='Создать сотрудника',
+        request=EmployeeCreateSerializer,
+        responses={status.HTTP_201_CREATED: EmployeeAdminDetailSerializer},
+    ),
+    partial_update=extend_schema(
+        summary='Частично обновить сотрудника',
+        request=EmployeeUpdateSerializer,
+        responses={status.HTTP_200_OK: EmployeeAdminDetailSerializer},
+    ),
+)
 class EmployeeAdminViewSet(ModelViewSet):
     permission_classes = [IsHR]
     http_method_names = ['get', 'post', 'patch', 'delete', 'head', 'options']
@@ -150,6 +162,22 @@ class EmployeeAdminViewSet(ModelViewSet):
         employee = cast(Employee, self.get_object())
         archive_employee(employee=employee, updated_by=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def create(self, request: Request, *args, **kwargs) -> Response:
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        employee = serializer.save()
+        headers = self.get_success_headers(serializer.data)
+        response_serializer = EmployeeAdminDetailSerializer(employee, context=self.get_serializer_context())
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def partial_update(self, request: Request, *args, **kwargs) -> Response:
+        employee = self.get_object()
+        serializer = self.get_serializer(employee, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        employee = serializer.save()
+        response_serializer = EmployeeAdminDetailSerializer(employee, context=self.get_serializer_context())
+        return Response(response_serializer.data)
 
     def get_serializer_class(self):
         match self.action:
