@@ -193,17 +193,7 @@ class EmployeeDetailSerializer(EmployeeBriefSerializer):
 
 class EmployeeAdminDetailSerializer(EmployeeDetailSerializer):
     class Meta(EmployeeDetailSerializer.Meta):
-        fields = EmployeeBriefSerializer.Meta.fields + (
-            'email',
-            'phone',
-            'interests',
-            'birthday',
-            'role_description',
-            'department',
-            'created_at',
-            'updated_at',
-            'created_by',
-        )  # type: ignore
+        fields = EmployeeDetailSerializer.Meta.fields + ('created_by',)  # type: ignore
 
 
 class EmployeeCreateSerializer(serializers.ModelSerializer):
