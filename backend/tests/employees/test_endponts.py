@@ -52,11 +52,65 @@ def test_admin_employee_create_endpoint_returns_201(api_client, hr):
     employee = Employee.objects.get(email='maria@example.com')
     assert employee.full_name == payload['full_name']
     assert employee.created_by == hr
+    assert employee.role_description == []
+    assert response.data['role_description'] == []
     assert response.data['id'] == employee.id
     assert response.data['department_id'] == department.id
     assert 'supervisor_detail' in response.data
     assert 'supervisor_photo_url' in response.data
     assert 'photo_original_url' in response.data
+
+
+@pytest.mark.django_db
+def test_admin_employee_create_accepts_role_description_list(api_client, hr):
+    api_client.force_authenticate(user=hr)
+    department = Department.objects.create(
+        name='Backend',
+        type=Department.Type.DEPARTMENT,
+    )
+
+    response = api_client.post(
+        reverse('admin-employee-list'),
+        data={
+            'full_name': 'Мария Петрова',
+            'job_title': 'HR Manager',
+            'email': 'maria-role@example.com',
+            'birthday': '1992-03-15',
+            'department': department.id,
+            'role_description': ['Подбор', 'Адаптация'],
+        },
+        format='json',
+    )
+
+    assert response.status_code == 201
+    employee = Employee.objects.get(email='maria-role@example.com')
+    assert employee.role_description == ['Подбор', 'Адаптация']
+    assert response.data['role_description'] == ['Подбор', 'Адаптация']
+
+
+@pytest.mark.django_db
+def test_admin_employee_create_rejects_role_description_object(api_client, hr):
+    api_client.force_authenticate(user=hr)
+    department = Department.objects.create(
+        name='Backend',
+        type=Department.Type.DEPARTMENT,
+    )
+
+    response = api_client.post(
+        reverse('admin-employee-list'),
+        data={
+            'full_name': 'Мария Петрова',
+            'job_title': 'HR Manager',
+            'email': 'maria-role-invalid@example.com',
+            'birthday': '1992-03-15',
+            'department': department.id,
+            'role_description': {},
+        },
+        format='json',
+    )
+
+    assert response.status_code == 400
+    assert 'role_description' in response.data['field_errors']
 
 
 @pytest.mark.django_db
