@@ -3,7 +3,9 @@ from typing import cast
 
 from django.db import transaction
 from django.db.models import Prefetch, Q
-from drf_spectacular.utils import OpenApiResponse, extend_schema, extend_schema_view
+from django.http import HttpResponse
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
 from notifications.tasks import notify_hr_about_inaccuracy_report
 from rest_framework import status
 from rest_framework.decorators import action
@@ -12,6 +14,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from accounts.permissions import IsHR
+from core.xlsx import build_xlsx
 from employees.models import Employee, Status
 from employees.serializers.employee import (
     EmployeeAdminDetailSerializer,
@@ -27,6 +30,7 @@ from structure.models import Department
 from tags.models import EmployeeTag, Tag
 
 ALLOWED_ORDERING_FIELDS = ('full_name', '-full_name', 'birthday', '-birthday')
+XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 logger = logging.getLogger(__name__)
 
 
@@ -187,6 +191,62 @@ class EmployeeAdminViewSet(ModelViewSet):
                 return EmployeeUpdateSerializer
             case _:
                 return EmployeeAdminDetailSerializer
+
+    @extend_schema(
+        summary='Экспорт сотрудников в Excel',
+        description='Выгружает сотрудников в XLSX с учётом фильтров и сортировки списка.',
+        parameters=[
+            OpenApiParameter('status', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter('search', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter('tag', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, many=True),
+            OpenApiParameter('job_title', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter('department_id', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter('direction_id', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter(
+                'ordering',
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                enum=ALLOWED_ORDERING_FIELDS,
+            ),
+        ],
+        responses={200: OpenApiResponse(response=OpenApiTypes.BINARY, description='XLSX-файл')},
+    )
+    @action(detail=False, methods=['get'], url_path='export')
+    def export(self, request: Request) -> HttpResponse:
+        queryset = apply_employee_filters(get_employee_queryset(), request, allow_archived=True)
+        headers = [
+            'ID',
+            'ФИО',
+            'Должность',
+            'Email',
+            'Телефон',
+            'Отдел',
+            'Направление',
+            'Статус карточки',
+            'Статус занятости',
+            'Дата рождения',
+            'Город',
+        ]
+        rows = [
+            [
+                employee.id,
+                employee.full_name,
+                employee.job_title,
+                employee.email,
+                employee.phone,
+                employee.department.name if employee.department else '',
+                employee.direction.name if employee.direction else '',
+                employee.status,
+                employee.get_employment_status_display(),
+                employee.birthday,
+                employee.city,
+            ]
+            for employee in queryset
+        ]
+        response = HttpResponse(build_xlsx(headers, rows, sheet_name='Сотрудники'), content_type=XLSX_CONTENT_TYPE)
+        response['Content-Disposition'] = 'attachment; filename="employees.xlsx"'
+        return response
 
     @action(detail=False, methods=['post'], url_path='bulk-action')
     def bulk_action(self, request: Request) -> Response:
