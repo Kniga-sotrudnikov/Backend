@@ -3,6 +3,7 @@ from typing import cast
 
 from django.db import transaction
 from django.db.models import Prefetch, Q
+from django.http import HttpResponse
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
 from notifications.tasks import notify_hr_about_inaccuracy_report
@@ -13,6 +14,7 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from accounts.permissions import IsHR
+from core.xlsx import build_xlsx
 from employees.models import Employee, Status
 from employees.serializers.employee import (
     EmployeeAdminDetailSerializer,
@@ -28,6 +30,7 @@ from structure.models import Department
 from tags.models import EmployeeTag, Tag
 
 ALLOWED_ORDERING_FIELDS = ('full_name', '-full_name', 'birthday', '-birthday')
+XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 logger = logging.getLogger(__name__)
 
 
@@ -154,7 +157,17 @@ class EmployeeViewSet(ReadOnlyModelViewSet):
                 enum=ALLOWED_ORDERING_FIELDS,
             ),
         ],
-    )
+    ),
+    create=extend_schema(
+        summary='Создать сотрудника',
+        request=EmployeeCreateSerializer,
+        responses={status.HTTP_201_CREATED: EmployeeAdminDetailSerializer},
+    ),
+    partial_update=extend_schema(
+        summary='Частично обновить сотрудника',
+        request=EmployeeUpdateSerializer,
+        responses={status.HTTP_200_OK: EmployeeAdminDetailSerializer},
+    ),
 )
 class EmployeeAdminViewSet(ModelViewSet):
     permission_classes = [IsHR]
@@ -175,6 +188,22 @@ class EmployeeAdminViewSet(ModelViewSet):
         archive_employee(employee=employee, updated_by=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    def create(self, request: Request, *args, **kwargs) -> Response:
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        employee = serializer.save()
+        headers = self.get_success_headers(serializer.data)
+        response_serializer = EmployeeAdminDetailSerializer(employee, context=self.get_serializer_context())
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def partial_update(self, request: Request, *args, **kwargs) -> Response:
+        employee = self.get_object()
+        serializer = self.get_serializer(employee, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        employee = serializer.save()
+        response_serializer = EmployeeAdminDetailSerializer(employee, context=self.get_serializer_context())
+        return Response(response_serializer.data)
+
     def get_serializer_class(self):
         match self.action:
             case 'list':
@@ -187,6 +216,62 @@ class EmployeeAdminViewSet(ModelViewSet):
                 return EmployeeUpdateSerializer
             case _:
                 return EmployeeAdminDetailSerializer
+
+    @extend_schema(
+        summary='Экспорт сотрудников в Excel',
+        description='Выгружает сотрудников в XLSX с учётом фильтров и сортировки списка.',
+        parameters=[
+            OpenApiParameter('status', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter('search', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter('tag', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, many=True),
+            OpenApiParameter('job_title', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter('department_id', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter('direction_id', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter(
+                'ordering',
+                OpenApiTypes.STR,
+                OpenApiParameter.QUERY,
+                required=False,
+                enum=ALLOWED_ORDERING_FIELDS,
+            ),
+        ],
+        responses={200: OpenApiResponse(response=OpenApiTypes.BINARY, description='XLSX-файл')},
+    )
+    @action(detail=False, methods=['get'], url_path='export')
+    def export(self, request: Request) -> HttpResponse:
+        queryset = apply_employee_filters(get_employee_queryset(), request, allow_archived=True)
+        headers = [
+            'ID',
+            'ФИО',
+            'Должность',
+            'Email',
+            'Телефон',
+            'Отдел',
+            'Направление',
+            'Статус карточки',
+            'Статус занятости',
+            'Дата рождения',
+            'Город',
+        ]
+        rows = [
+            [
+                employee.id,
+                employee.full_name,
+                employee.job_title,
+                employee.email,
+                employee.phone,
+                employee.department.name if employee.department else '',
+                employee.direction.name if employee.direction else '',
+                employee.status,
+                employee.get_employment_status_display(),
+                employee.birthday,
+                employee.city,
+            ]
+            for employee in queryset
+        ]
+        response = HttpResponse(build_xlsx(headers, rows, sheet_name='Сотрудники'), content_type=XLSX_CONTENT_TYPE)
+        response['Content-Disposition'] = 'attachment; filename="employees.xlsx"'
+        return response
 
     @action(detail=False, methods=['post'], url_path='bulk-action')
     def bulk_action(self, request: Request) -> Response:
