@@ -4,7 +4,7 @@ from datetime import date
 
 from django.contrib.auth.base_user import AbstractBaseUser
 
-from employees.models import Employee, Status
+from employees.models import Employee, EmploymentStatus, Status
 from structure.models import Department
 
 
@@ -19,6 +19,16 @@ class EmployeeCreate:
     role_description: list[str] = dataclass_field(default_factory=list)
     phone: str = ''
     interests: str = ''
+    personal_email: str | None = None
+    personal_phone: str | None = None
+    supervisor: Employee | None = None
+    city: str | None = None
+    employment_status: str = EmploymentStatus.WORKING
+    crm_profile: str | None = None
+    social_network: str | None = None
+    resume_link: str | None = None
+    supervisor_role: Department | None = None
+    supervisor_photo: Employee | None = None
 
 
 @dataclass
