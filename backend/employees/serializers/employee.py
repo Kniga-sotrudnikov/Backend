@@ -7,62 +7,41 @@ from tags.serializers import TagSerializer
 from tags.services import assign_tags, remove_tags
 
 
-class TagIdentifierField(serializers.Field):
-    """Принимает существующий id тега или свободное название нового тега."""
+class TagNameField(serializers.CharField):
+    """Строго принимает название тега только строкой."""
 
     default_error_messages = {
-        'invalid': 'Тег должен быть id существующего тега или непустой строкой с названием',
-        'empty': 'Название тега не может быть пустым',
-        'too_long': 'Название тега не может быть длиннее {max_length} символов',
+        **serializers.CharField.default_error_messages,
+        'invalid': 'Тег должен быть строкой',
     }
 
     def to_internal_value(self, data):
-        if isinstance(data, bool):
+        if not isinstance(data, str):
             self.fail('invalid')
-
-        if isinstance(data, int):
-            if data <= 0:
-                self.fail('invalid')
-            return {'id': data}
-
-        if isinstance(data, str):
-            name = data.strip()
-            if not name:
-                self.fail('empty')
-            max_length = Tag._meta.get_field('name').max_length
-            if len(name) > max_length:
-                self.fail('too_long', max_length=max_length)
-            return {'name': name}
-
-        self.fail('invalid')
-
-    def to_representation(self, value):
-        return value
+        return super().to_internal_value(data)
 
 
-def validate_tag_identifiers(value):
-    """Проверяет id тегов без ограничения списка возможных названий."""
-    tag_ids = {item['id'] for item in value if 'id' in item}
-    if not tag_ids:
-        return value
+def validate_tag_names(value):
+    """Проверяет открытый список строковых тегов."""
+    max_length = Tag._meta.get_field('name').max_length
+    normalized_names = []
 
-    existing_tags = set(Tag.objects.filter(id__in=tag_ids).values_list('id', flat=True))
-    missing_tags = tag_ids - existing_tags
+    for name in value:
+        normalized_name = name.strip()
+        if not normalized_name:
+            raise serializers.ValidationError('Название тега не может быть пустым')
+        if len(normalized_name) > max_length:
+            raise serializers.ValidationError(f'Название тега не может быть длиннее {max_length} символов')
+        normalized_names.append(normalized_name)
 
-    if missing_tags:
-        raise serializers.ValidationError(f'Теги с id {list(missing_tags)} не существуют')
-    return value
+    return normalized_names
 
 
-def resolve_tag_ids(tag_identifiers):
-    """Возвращает id существующих тегов и создаёт недостающие свободные теги."""
+def resolve_tag_ids(tag_names):
+    """Возвращает id тегов, создавая недостающие свободные теги."""
     tag_ids = []
-    for item in tag_identifiers:
-        if 'id' in item:
-            tag_ids.append(item['id'])
-            continue
-
-        tag, _ = Tag.objects.get_or_create(name=item['name'])
+    for name in tag_names:
+        tag, _ = Tag.objects.get_or_create(name=name)
         tag_ids.append(tag.id)
 
     return list(dict.fromkeys(tag_ids))
@@ -271,10 +250,10 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
         help_text='Список ролей или обязанностей сотрудника',
     )
     tags = serializers.ListField(
-        child=TagIdentifierField(),
+        child=TagNameField(),
         write_only=True,
         required=False,
-        help_text='Список тегов: id существующих тегов или свободные строковые названия новых тегов',
+        help_text='Открытый список строковых тегов',
     )
     supervisor = serializers.PrimaryKeyRelatedField(
         queryset=Employee.objects.all(),
@@ -328,7 +307,7 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
         return value
 
     def validate_tags(self, value):
-        return validate_tag_identifiers(value)
+        return validate_tag_names(value)
 
     def create(self, validated_data):
         tag_ids = resolve_tag_ids(validated_data.pop('tags', []))
@@ -347,10 +326,10 @@ class EmployeeUpdateSerializer(serializers.ModelSerializer):
         help_text='Список ролей или обязанностей сотрудника',
     )
     tags = serializers.ListField(
-        child=TagIdentifierField(),
+        child=TagNameField(),
         write_only=True,
         required=False,
-        help_text='Список тегов: id существующих тегов или свободные строковые названия новых тегов',
+        help_text='Открытый список строковых тегов',
     )
     supervisor = serializers.PrimaryKeyRelatedField(
         queryset=Employee.objects.all(),
@@ -406,18 +385,18 @@ class EmployeeUpdateSerializer(serializers.ModelSerializer):
         return value
 
     def validate_tags(self, value):
-        return validate_tag_identifiers(value)
+        return validate_tag_names(value)
 
     def update(self, instance, validated_data):
-        tag_identifiers = validated_data.pop('tags', None)
+        tag_names = validated_data.pop('tags', None)
         user = get_request_user(self.context)
         employee = update_employee(
             instance,
             EmployeeUpdate(**validated_data),
             updated_by=user,
         )
-        if tag_identifiers is not None:
-            tag_ids = resolve_tag_ids(tag_identifiers)
+        if tag_names is not None:
+            tag_ids = resolve_tag_ids(tag_names)
             current_tag_ids = set(employee.employee_tags.filter(is_deleted=False).values_list('tag_id', flat=True))
             new_tag_ids = set(tag_ids)
             add_ids = list(new_tag_ids - current_tag_ids)

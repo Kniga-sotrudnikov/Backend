@@ -144,7 +144,7 @@ def test_admin_employee_create_rejects_role_description_object(api_client, hr):
 
 
 @pytest.mark.django_db
-def test_admin_employee_patch_replaces_tags_with_names_and_ids(api_client, hr, employee_record):
+def test_admin_employee_patch_replaces_tags_with_names(api_client, hr, employee_record):
     api_client.force_authenticate(user=hr)
     department = Department.objects.create(
         name='Backend',
@@ -162,7 +162,7 @@ def test_admin_employee_patch_replaces_tags_with_names_and_ids(api_client, hr, e
 
     response = api_client.patch(
         reverse('admin-employee-detail', kwargs={'pk': employee.id}),
-        data={'tags': [existing_tag.id, '#пилотный-проект']},
+        data={'tags': [existing_tag.name, '#пилотный-проект']},
         format='json',
     )
 
@@ -171,6 +171,31 @@ def test_admin_employee_patch_replaces_tags_with_names_and_ids(api_client, hr, e
     assert active_tag_names == {'Python', '#пилотный-проект'}
     assert EmployeeTag.all_objects.get(employee=employee, tag=old_tag).is_deleted is True
     assert set(tag['name'] for tag in response.data['tags']) == active_tag_names
+
+
+@pytest.mark.django_db
+def test_admin_employee_create_rejects_numeric_tags(api_client, hr):
+    api_client.force_authenticate(user=hr)
+    department = Department.objects.create(
+        name='Backend',
+        type=Department.Type.DEPARTMENT,
+    )
+
+    response = api_client.post(
+        reverse('admin-employee-list'),
+        data={
+            'full_name': 'Мария Петрова',
+            'job_title': 'HR Manager',
+            'email': 'maria-numeric-tags@example.com',
+            'birthday': '1992-03-15',
+            'department': department.id,
+            'tags': [1],
+        },
+        format='json',
+    )
+
+    assert response.status_code == 400
+    assert 'tags' in response.data['field_errors']
 
 
 @pytest.mark.django_db
