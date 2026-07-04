@@ -1,13 +1,34 @@
 from medias.validators import validate_file_size, validate_org_image_extension
 from rest_framework import serializers
 
+from employees.models import Employee
+
 from .models import Department, OrgStructureImage
+
+
+class DepartmentHeadSerializer(serializers.ModelSerializer):
+    """Краткая информация о руководителе подразделения."""
+
+    class Meta:
+        model = Employee
+        fields = (
+            'id',
+            'full_name',
+            'job_title',
+        )
 
 
 class DepartmentBriefSerializer(serializers.ModelSerializer):
     """Краткая информация о подразделении для списков."""
 
     employee_count = serializers.IntegerField(read_only=True)
+    head = DepartmentHeadSerializer(read_only=True)
+    head_id = serializers.PrimaryKeyRelatedField(
+        source='head',
+        queryset=Employee.objects.all(),
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = Department
@@ -15,6 +36,8 @@ class DepartmentBriefSerializer(serializers.ModelSerializer):
             'id',
             'name',
             'type',
+            'head',
+            'head_id',
             'display_order',
             'employee_count',
         )
@@ -25,6 +48,13 @@ class DepartmentDetailSerializer(serializers.ModelSerializer):
 
     employee_count = serializers.IntegerField(read_only=True)
     children = serializers.SerializerMethodField()
+    head = DepartmentHeadSerializer(read_only=True)
+    head_id = serializers.PrimaryKeyRelatedField(
+        source='head',
+        queryset=Employee.objects.all(),
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = Department
@@ -35,6 +65,8 @@ class DepartmentDetailSerializer(serializers.ModelSerializer):
             'description',
             'type',
             'parent',
+            'head',
+            'head_id',
             'display_order',
             'is_active',
             'employee_count',
@@ -53,6 +85,13 @@ class OrgTreeNodeSerializer(serializers.ModelSerializer):
 
     employee_count = serializers.IntegerField(read_only=True)
     children = serializers.SerializerMethodField()
+    head = DepartmentHeadSerializer(read_only=True)
+    head_id = serializers.PrimaryKeyRelatedField(
+        source='head',
+        queryset=Employee.objects.all(),
+        required=False,
+        allow_null=True,
+    )
 
     class Meta:
         model = Department
@@ -60,6 +99,8 @@ class OrgTreeNodeSerializer(serializers.ModelSerializer):
             'id',
             'name',
             'type',
+            'head',
+            'head_id',
             'employee_count',
             'children',
         )

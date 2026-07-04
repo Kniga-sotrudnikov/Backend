@@ -22,7 +22,7 @@ from structure.serializers import (
 
 def get_department_queryset() -> QuerySet[Department]:
     """Базовый queryset подразделений с аннотацией числа активных сотрудников."""
-    return Department.objects.select_related('parent').annotate(
+    return Department.objects.select_related('parent', 'head').annotate(
         employee_count=Count(
             'employees',
             filter=Q(employees__status='active', employees__is_deleted=False),

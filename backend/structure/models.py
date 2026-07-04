@@ -49,6 +49,15 @@ class Department(BaseModel, SoftDeleteModel):
         verbose_name='Родительское подразделение',
     )
 
+    head = models.ForeignKey(
+        'employees.Employee',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='headed_departments',
+        verbose_name='Руководитель',
+    )
+
     display_order = models.IntegerField(default=DEFAULT_DISPLAY_ORDER, verbose_name='Порядок отображения')
 
     is_active = models.BooleanField(default=True, verbose_name='Активен')

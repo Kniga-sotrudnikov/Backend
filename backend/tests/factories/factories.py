@@ -76,6 +76,7 @@ class DirectionFactory(DjangoModelFactory):
     short_name = factory.LazyAttribute(lambda o: o.name[:10])
     type = 'direction'
     parent = None
+    head = None
     display_order = factory.Sequence(lambda n: n)
     is_active = True
 
@@ -100,6 +101,7 @@ class DepartmentFactory(DjangoModelFactory):
     short_name = factory.LazyAttribute(lambda o: o.name[:10])
     type = 'department'
     parent = None
+    head = None
     display_order = factory.Sequence(lambda n: n)
     is_active = True
 
