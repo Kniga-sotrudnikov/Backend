@@ -89,6 +89,36 @@ def test_admin_employee_create_accepts_role_description_list(api_client, hr):
 
 
 @pytest.mark.django_db
+def test_admin_employee_create_accepts_open_tag_names(api_client, hr):
+    api_client.force_authenticate(user=hr)
+    department = Department.objects.create(
+        name='Backend',
+        type=Department.Type.DEPARTMENT,
+    )
+    tag_names = ['#запуск-нового-направления', '#английский-язык-B1+']
+
+    response = api_client.post(
+        reverse('admin-employee-list'),
+        data={
+            'full_name': 'Мария Петрова',
+            'job_title': 'HR Manager',
+            'email': 'maria-tags@example.com',
+            'birthday': '1992-03-15',
+            'department': department.id,
+            'tags': tag_names,
+        },
+        format='json',
+    )
+
+    assert response.status_code == 201
+    employee = Employee.objects.get(email='maria-tags@example.com')
+    assert set(Tag.objects.filter(name__in=tag_names).values_list('name', flat=True)) == set(tag_names)
+    assert set(employee.employee_tags.filter(is_deleted=False).values_list('tag__name', flat=True)) == set(tag_names)
+    assert set(tag['name'] for tag in response.data['tags']) == set(tag_names)
+    assert all(employee_tag.assigned_by == hr for employee_tag in employee.employee_tags.all())
+
+
+@pytest.mark.django_db
 def test_admin_employee_create_rejects_role_description_object(api_client, hr):
     api_client.force_authenticate(user=hr)
     department = Department.objects.create(
@@ -111,6 +141,61 @@ def test_admin_employee_create_rejects_role_description_object(api_client, hr):
 
     assert response.status_code == 400
     assert 'role_description' in response.data['field_errors']
+
+
+@pytest.mark.django_db
+def test_admin_employee_patch_replaces_tags_with_names(api_client, hr, employee_record):
+    api_client.force_authenticate(user=hr)
+    department = Department.objects.create(
+        name='Backend',
+        type=Department.Type.DEPARTMENT,
+    )
+    old_tag = Tag.objects.create(name='Legacy')
+    existing_tag = Tag.objects.create(name='Python')
+    employee = employee_record(
+        full_name='Иван Иванов',
+        job_title='Backend Developer',
+        email='ivan-tags@example.com',
+        department=department,
+    )
+    EmployeeTag.objects.create(employee=employee, tag=old_tag, assigned_by=hr)
+
+    response = api_client.patch(
+        reverse('admin-employee-detail', kwargs={'pk': employee.id}),
+        data={'tags': [existing_tag.name, '#пилотный-проект']},
+        format='json',
+    )
+
+    assert response.status_code == 200
+    active_tag_names = set(employee.employee_tags.filter(is_deleted=False).values_list('tag__name', flat=True))
+    assert active_tag_names == {'Python', '#пилотный-проект'}
+    assert EmployeeTag.all_objects.get(employee=employee, tag=old_tag).is_deleted is True
+    assert set(tag['name'] for tag in response.data['tags']) == active_tag_names
+
+
+@pytest.mark.django_db
+def test_admin_employee_create_rejects_numeric_tags(api_client, hr):
+    api_client.force_authenticate(user=hr)
+    department = Department.objects.create(
+        name='Backend',
+        type=Department.Type.DEPARTMENT,
+    )
+
+    response = api_client.post(
+        reverse('admin-employee-list'),
+        data={
+            'full_name': 'Мария Петрова',
+            'job_title': 'HR Manager',
+            'email': 'maria-numeric-tags@example.com',
+            'birthday': '1992-03-15',
+            'department': department.id,
+            'tags': [1],
+        },
+        format='json',
+    )
+
+    assert response.status_code == 400
+    assert 'tags' in response.data['field_errors']
 
 
 @pytest.mark.django_db
