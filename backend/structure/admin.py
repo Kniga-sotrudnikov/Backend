@@ -10,9 +10,10 @@ class DepartmentAdmin(admin.ModelAdmin):
         'short_name',
         'type',
         'parent',
+        'head',
         'is_active',
     )
-    search_fields = ('name', 'type')
+    search_fields = ('name', 'type', 'head__full_name')
 
 
 @admin.register(OrgStructureImage)
