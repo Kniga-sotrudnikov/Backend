@@ -227,6 +227,55 @@ def test_admin_employee_patch_endpoint_returns_detail(api_client, hr, employee_r
     assert 'photo_original_url' in response.data
 
 
+@pytest.mark.django_db
+def test_employee_detail_returns_personal_contacts(auth_client):
+    department = Department.objects.create(
+        name='Backend',
+        type=Department.Type.DEPARTMENT,
+    )
+    employee = Employee.objects.create(
+        full_name='Иван Иванов',
+        job_title='Backend Developer',
+        email='ivan-detail@example.com',
+        phone='+79990000000',
+        personal_phone='+79990000001',
+        personal_email='ivan.personal@example.com',
+        birthday='1990-01-01',
+        department=department,
+    )
+
+    response = auth_client.get(reverse('employee-detail', kwargs={'pk': employee.id}))
+
+    assert response.status_code == 200
+    assert response.data['personal_phone'] == '+79990000001'
+    assert response.data['personal_email'] == 'ivan.personal@example.com'
+
+
+@pytest.mark.django_db
+def test_admin_employee_detail_returns_personal_contacts(api_client, hr):
+    api_client.force_authenticate(user=hr)
+    department = Department.objects.create(
+        name='Backend',
+        type=Department.Type.DEPARTMENT,
+    )
+    employee = Employee.objects.create(
+        full_name='Иван Иванов',
+        job_title='Backend Developer',
+        email='ivan-admin-detail@example.com',
+        phone='+79990000000',
+        personal_phone='+79990000001',
+        personal_email='ivan.personal@example.com',
+        birthday='1990-01-01',
+        department=department,
+    )
+
+    response = api_client.get(reverse('admin-employee-detail', kwargs={'pk': employee.id}))
+
+    assert response.status_code == 200
+    assert response.data['personal_phone'] == '+79990000001'
+    assert response.data['personal_email'] == 'ivan.personal@example.com'
+
+
 @pytest.mark.parametrize(
     ('query_params_builder', 'expected_name'),
     [
