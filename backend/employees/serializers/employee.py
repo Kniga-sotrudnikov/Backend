@@ -172,6 +172,8 @@ class EmployeeDetailSerializer(EmployeeBriefSerializer):
         fields = EmployeeBriefSerializer.Meta.fields + (
             'email',
             'phone',
+            'personal_phone',
+            'personal_email',
             'interests',
             'birthday',
             'role_description',
