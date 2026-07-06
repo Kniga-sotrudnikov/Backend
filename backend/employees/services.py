@@ -41,7 +41,17 @@ class EmployeeUpdate:
     user: AbstractBaseUser | None = None
     role_description: list[str] | None = None
     phone: str | None = None
+    personal_email: str | None = None
+    personal_phone: str | None = None
     interests: str | None = None
+    supervisor: Employee | None = None
+    city: str | None = None
+    employment_status: str | None = None
+    crm_profile: str | None = None
+    social_network: str | None = None
+    resume_link: str | None = None
+    supervisor_role: Department | None = None
+    supervisor_photo: Employee | None = None
 
 
 def create_employee(data: EmployeeCreate, created_by: AbstractBaseUser | None = None) -> Employee:

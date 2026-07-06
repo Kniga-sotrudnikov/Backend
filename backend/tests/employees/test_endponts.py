@@ -276,6 +276,67 @@ def test_admin_employee_detail_returns_personal_contacts(api_client, hr):
     assert response.data['personal_email'] == 'ivan.personal@example.com'
 
 
+@pytest.mark.django_db
+def test_admin_employee_patch_updates_extended_profile_fields(api_client, hr, employee_record):
+    api_client.force_authenticate(user=hr)
+    department = Department.objects.create(
+        name='Backend',
+        type=Department.Type.DEPARTMENT,
+    )
+    supervisor_role = Department.objects.create(
+        name='Team Lead',
+        type=Department.Type.DEPARTMENT,
+    )
+    supervisor = employee_record(
+        full_name='Анна Руководитель',
+        job_title='Team Lead',
+        email='anna-lead@example.com',
+        department=department,
+    )
+    supervisor_photo = employee_record(
+        full_name='Ирина Фото',
+        job_title='Head of Engineering',
+        email='irina-photo@example.com',
+        department=department,
+    )
+    employee = employee_record(
+        full_name='Иван Иванов',
+        job_title='Backend Developer',
+        email='ivan-extended-patch@example.com',
+        department=department,
+    )
+
+    response = api_client.patch(
+        reverse('admin-employee-detail', kwargs={'pk': employee.id}),
+        data={
+            'personal_phone': '+79990000001',
+            'personal_email': 'ivan.personal@example.com',
+            'supervisor': supervisor.id,
+            'supervisor_role': supervisor_role.id,
+            'supervisor_photo': supervisor_photo.id,
+            'city': 'Москва',
+            'employment_status': 'remote',
+            'crm_profile': 'https://crm.example.com/profiles/ivan',
+            'social_network': 'https://social.example.com/ivan',
+            'resume_link': 'https://example.com/resume/ivan',
+        },
+        format='json',
+    )
+
+    assert response.status_code == 200
+    employee.refresh_from_db()
+    assert employee.personal_phone == '+79990000001'
+    assert employee.personal_email == 'ivan.personal@example.com'
+    assert employee.supervisor == supervisor
+    assert employee.supervisor_role == supervisor_role
+    assert employee.supervisor_photo == supervisor_photo
+    assert employee.city == 'Москва'
+    assert employee.employment_status == 'remote'
+    assert employee.crm_profile == 'https://crm.example.com/profiles/ivan'
+    assert employee.social_network == 'https://social.example.com/ivan'
+    assert employee.resume_link == 'https://example.com/resume/ivan'
+
+
 @pytest.mark.parametrize(
     ('query_params_builder', 'expected_name'),
     [
@@ -400,8 +461,8 @@ def test_admin_list_employee_filters_by_archived_status(api_client, hr, employee
         ('full_name', ['Анна Петрова', 'Иван Иванов', 'Петр Петров']),
         ('-full_name', ['Петр Петров', 'Иван Иванов', 'Анна Петрова']),
         ('birthday', ['Петр Петров', 'Иван Иванов', 'Анна Петрова']),
-        ('-birthday', ['Анна Петрова', 'Иван Иванов', 'Петр Петров'])
-    ]
+        ('-birthday', ['Анна Петрова', 'Иван Иванов', 'Петр Петров']),
+    ],
 )
 def test_employee_list_ordering(auth_client, employee_record, ordering, expected_results):
     department = Department.objects.create(
