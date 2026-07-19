@@ -93,9 +93,7 @@ class EmployeeAdmin(admin.ModelAdmin):
         (
             'Доступ к системе',
             {
-                'fields': (
-                    'user',
-                ),
+                'fields': ('user',),
             },
         ),
     )
