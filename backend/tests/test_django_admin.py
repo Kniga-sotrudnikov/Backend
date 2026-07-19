@@ -92,6 +92,77 @@ def test_local_admin_changelists_are_available(client, django_admin_user):
 
 
 @pytest.mark.django_db
+def test_employee_admin_add_form_shows_only_creation_fields(client, django_admin_user):
+    """Форма создания сотрудника показывает только поля, нужные при создании."""
+    client.force_login(django_admin_user)
+
+    response = client.get(reverse('admin:employees_employee_add'))
+
+    assert response.status_code == 200
+    assert response.context['title'] == 'Добавить сотрудника'
+    assert set(response.context['adminform'].form.fields) == {
+        'full_name',
+        'job_title',
+        'email',
+        'birthday',
+        'department',
+        'phone',
+        'city',
+    }
+
+
+@pytest.mark.django_db
+def test_employee_admin_creates_employee_with_required_fields(client, django_admin_user):
+    """Django admin создаёт сотрудника минимальным понятным набором полей."""
+    client.force_login(django_admin_user)
+    department = Department.objects.create(name='Backend', type=Department.Type.DEPARTMENT)
+
+    response = client.post(
+        reverse('admin:employees_employee_add'),
+        data={
+            'full_name': 'Иван Петров',
+            'job_title': 'Backend-разработчик',
+            'email': 'ivan.petrov-admin@example.com',
+            'birthday': '1990-01-01',
+            'department': department.id,
+            'phone': '+79990000000',
+            'city': 'Москва',
+            '_save': 'Сохранить',
+        },
+    )
+
+    assert response.status_code == 302
+    employee = Employee.objects.get(email='ivan.petrov-admin@example.com')
+    assert employee.full_name == 'Иван Петров'
+    assert employee.department == department
+    assert employee.status == Status.ACTIVE
+    assert employee.created_by == django_admin_user
+
+
+@pytest.mark.django_db
+def test_employee_admin_change_form_hides_technical_fields(client, django_admin_user):
+    """Форма редактирования сотрудника не показывает служебные поля soft-delete и аудита."""
+    client.force_login(django_admin_user)
+    department = Department.objects.create(name='Backend', type=Department.Type.DEPARTMENT)
+    employee = Employee.objects.create(
+        full_name='Иван Петров',
+        job_title='Backend-разработчик',
+        email='ivan.petrov-change-admin@example.com',
+        birthday='1990-01-01',
+        department=department,
+    )
+
+    response = client.get(reverse('admin:employees_employee_change', args=[employee.id]))
+
+    assert response.status_code == 200
+    form_fields = set(response.context['adminform'].form.fields)
+    assert 'is_deleted' not in form_fields
+    assert 'deleted_at' not in form_fields
+    assert 'created_by' not in form_fields
+    assert 'updated_by' not in form_fields
+
+
+@pytest.mark.django_db
 def test_employee_admin_shows_archived_and_hides_soft_deleted(client, django_admin_user):
     """Admin сотрудников показывает архивных и скрывает soft-deleted записи."""
     client.force_login(django_admin_user)
