@@ -11,11 +11,92 @@ from tags.models import EmployeeTag, Tag
 
 class EmployeeTagInline(admin.TabularInline):
     model = EmployeeTag
+    fields = ('tag',)
+    autocomplete_fields = ('tag',)
     extra = 1
 
 
 @admin.register(Employee)
 class EmployeeAdmin(admin.ModelAdmin):
+    add_fieldsets = (
+        (
+            'Основные данные сотрудника',
+            {
+                'fields': (
+                    'full_name',
+                    'job_title',
+                    'email',
+                    'birthday',
+                    'department',
+                ),
+            },
+        ),
+        (
+            'Контакты',
+            {
+                'fields': (
+                    'phone',
+                    'city',
+                ),
+            },
+        ),
+    )
+    fieldsets = (
+        (
+            'Основные данные сотрудника',
+            {
+                'fields': (
+                    'full_name',
+                    'job_title',
+                    'email',
+                    'birthday',
+                    'department',
+                    'status',
+                ),
+            },
+        ),
+        (
+            'Контакты',
+            {
+                'fields': (
+                    'phone',
+                    'city',
+                    'personal_phone',
+                    'personal_email',
+                ),
+            },
+        ),
+        (
+            'Профиль сотрудника',
+            {
+                'fields': (
+                    'photo',
+                    'role_description',
+                    'interests',
+                    'employment_status',
+                    'crm_profile',
+                    'social_network',
+                    'resume_link',
+                ),
+            },
+        ),
+        (
+            'Руководитель',
+            {
+                'fields': (
+                    'supervisor',
+                    'supervisor_role',
+                    'supervisor_photo',
+                ),
+            },
+        ),
+        (
+            'Доступ к системе',
+            {
+                'fields': ('user',),
+            },
+        ),
+    )
     list_display = (
         'full_name',
         'job_title',
@@ -46,6 +127,28 @@ class EmployeeAdmin(admin.ModelAdmin):
     autocomplete_fields = ('department', 'user', 'supervisor', 'supervisor_role', 'supervisor_photo')
     inlines = (EmployeeTagInline,)
     actions = ('archive_all', 'change_department_action', 'assign_tag_action')
+
+    def add_view(self, request, form_url='', extra_context=None):
+        extra_context = extra_context or {}
+        extra_context['title'] = 'Добавить сотрудника'
+        return super().add_view(request, form_url, extra_context)
+
+    def get_fieldsets(self, request, obj=None):
+        if obj is None:
+            return self.add_fieldsets
+        return super().get_fieldsets(request, obj)
+
+    def get_inlines(self, request, obj):
+        if obj is None:
+            return ()
+        return super().get_inlines(request, obj)
+
+    def save_model(self, request, obj, form, change):
+        if change:
+            obj.updated_by = request.user
+        elif obj.created_by_id is None:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
 
     @admin.action(description='массово архивировать')
     def archive_all(self, request, queryset):
