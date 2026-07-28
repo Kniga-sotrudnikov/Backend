@@ -81,7 +81,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
         return queryset
 
     def get_serializer_class(self):
-        if self.action == 'retrieve':
+        if self.action in ('create', 'retrieve', 'partial_update'):
             return DepartmentDetailSerializer
         return DepartmentBriefSerializer
 
