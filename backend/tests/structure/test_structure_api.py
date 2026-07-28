@@ -74,7 +74,9 @@ def test_department_create_accepts_head_id(hr_client):
 
     assert response.status_code == status.HTTP_201_CREATED
     department = Department.objects.get(name='Backend')
+    assert department.parent == direction
     assert department.head == head
+    assert response.data['parent'] == direction.id
     assert response.data['head_id'] == head.id
     assert response.data['head'] == {
         'id': head.id,
@@ -117,6 +119,39 @@ def test_department_patch_updates_head_id(hr_client):
     assert department.head is None
     assert response.data['head_id'] is None
     assert response.data['head'] is None
+
+
+def test_department_patch_updates_parent(hr_client):
+    """HR может изменить или очистить родительское подразделение."""
+    old_direction = Department.objects.create(name='Технологии', type=Department.Type.DIRECTION)
+    new_direction = Department.objects.create(name='Операции', type=Department.Type.DIRECTION)
+    department = Department.objects.create(
+        name='Backend',
+        type=Department.Type.DEPARTMENT,
+        parent=old_direction,
+    )
+
+    response = hr_client.patch(
+        reverse('department-detail', kwargs={'pk': department.id}),
+        data={'parent': new_direction.id},
+        format='json',
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    department.refresh_from_db()
+    assert department.parent == new_direction
+    assert response.data['parent'] == new_direction.id
+
+    response = hr_client.patch(
+        reverse('department-detail', kwargs={'pk': department.id}),
+        data={'parent': None},
+        format='json',
+    )
+
+    assert response.status_code == status.HTTP_200_OK
+    department.refresh_from_db()
+    assert department.parent is None
+    assert response.data['parent'] is None
 
 
 def test_org_structure_tree_returns_employee_count(auth_client):
