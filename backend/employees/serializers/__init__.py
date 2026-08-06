@@ -1,4 +1,6 @@
 from .employee import (
+    BulkActionRequestSerializer,
+    BulkActionResponseSerializer,
     EmployeeAdminDetailSerializer,
     EmployeeBriefSerializer,
     EmployeeCreateSerializer,
@@ -8,6 +10,8 @@ from .employee import (
 from .media import EmployeePhotoUploadSerializer
 
 __all__ = (
+    'BulkActionRequestSerializer',
+    'BulkActionResponseSerializer',
     'EmployeeAdminDetailSerializer',
     'EmployeeBriefSerializer',
     'EmployeeCreateSerializer',

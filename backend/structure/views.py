@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 from django.db.models import Count, Prefetch, Q, QuerySet
-from drf_spectacular.utils import extend_schema, extend_schema_view
+from drf_spectacular.utils import OpenApiExample, extend_schema, extend_schema_view
 from rest_framework import generics, status, viewsets
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -40,7 +40,29 @@ def get_department_queryset() -> QuerySet[Department]:
     create=extend_schema(
         tags=[STRUCTURE_TAG],
         summary='Создание подразделения',
-        description=WRITE_ROLES,
+        description=(
+            f'{WRITE_ROLES}\n\n'
+            'Поле parent принимает ID родительского направления или подразделения. '
+            'Для отдела type=department нужно передать parent; для направления верхнего уровня parent может быть null.'
+        ),
+        request=DepartmentDetailSerializer,
+        responses={status.HTTP_201_CREATED: DepartmentDetailSerializer},
+        examples=[
+            OpenApiExample(
+                'Создание отдела внутри направления',
+                value={
+                    'name': 'Backend',
+                    'short_name': 'BE',
+                    'description': 'Backend-разработка',
+                    'type': Department.Type.DEPARTMENT,
+                    'parent': 123,
+                    'head_id': 45,
+                    'display_order': 10,
+                    'is_active': True,
+                },
+                request_only=True,
+            )
+        ],
     ),
     retrieve=extend_schema(
         tags=[STRUCTURE_TAG],
@@ -50,7 +72,20 @@ def get_department_queryset() -> QuerySet[Department]:
     partial_update=extend_schema(
         tags=[STRUCTURE_TAG],
         summary='Частичное обновление подразделения',
-        description=WRITE_ROLES,
+        description=(
+            f'{WRITE_ROLES}\n\n'
+            'Чтобы изменить родителя отдела, передайте ID направления или подразделения в поле parent. '
+            'Для направления верхнего уровня parent можно передать null.'
+        ),
+        request=DepartmentDetailSerializer,
+        responses={status.HTTP_200_OK: DepartmentDetailSerializer},
+        examples=[
+            OpenApiExample(
+                'Перенос отдела в другое направление',
+                value={'parent': 123},
+                request_only=True,
+            )
+        ],
     ),
     destroy=extend_schema(
         tags=[STRUCTURE_TAG],
