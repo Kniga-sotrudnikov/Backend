@@ -5,7 +5,13 @@ from django.db import transaction
 from django.db.models import Prefetch, Q
 from django.http import HttpResponse
 from drf_spectacular.types import OpenApiTypes
-from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema, extend_schema_view
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiParameter,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+)
 from notifications.tasks import notify_hr_about_inaccuracy_report
 from rest_framework import status
 from rest_framework.decorators import action
@@ -15,8 +21,10 @@ from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from accounts.permissions import IsHR
 from core.xlsx import build_xlsx
-from employees.models import Employee, Status
+from employees.models import Employee, EmploymentStatus, Status
 from employees.serializers.employee import (
+    BulkActionRequestSerializer,
+    BulkActionResponseSerializer,
     EmployeeAdminDetailSerializer,
     EmployeeBriefSerializer,
     EmployeeCreateSerializer,
@@ -32,6 +40,94 @@ from tags.models import EmployeeTag, Tag
 ALLOWED_ORDERING_FIELDS = ('full_name', '-full_name', 'birthday', '-birthday')
 XLSX_CONTENT_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 logger = logging.getLogger(__name__)
+
+EMPLOYEE_LIST_FILTER_PARAMETERS = [
+    OpenApiParameter(
+        'limit',
+        OpenApiTypes.INT,
+        OpenApiParameter.QUERY,
+        required=False,
+        description='Лимит пагинации.',
+    ),
+    OpenApiParameter(
+        'offset',
+        OpenApiTypes.INT,
+        OpenApiParameter.QUERY,
+        required=False,
+        description='Смещение пагинации.',
+    ),
+    OpenApiParameter(
+        'search',
+        OpenApiTypes.STR,
+        OpenApiParameter.QUERY,
+        required=False,
+        description='Поиск по full_name и job_title.',
+    ),
+    OpenApiParameter(
+        'tag',
+        OpenApiTypes.INT,
+        OpenApiParameter.QUERY,
+        required=False,
+        many=True,
+        description='ID тега. Можно передавать несколько раз: ?tag=1&tag=2.',
+    ),
+    OpenApiParameter(
+        'job_title',
+        OpenApiTypes.STR,
+        OpenApiParameter.QUERY,
+        required=False,
+        description='Фильтр по точному совпадению должности.',
+    ),
+    OpenApiParameter(
+        'department_id',
+        OpenApiTypes.INT,
+        OpenApiParameter.QUERY,
+        required=False,
+        description='ID отдела.',
+    ),
+    OpenApiParameter(
+        'direction_id',
+        OpenApiTypes.INT,
+        OpenApiParameter.QUERY,
+        required=False,
+        description='ID направления.',
+    ),
+    OpenApiParameter(
+        'city',
+        OpenApiTypes.STR,
+        OpenApiParameter.QUERY,
+        required=False,
+        description='Фильтр по городу, точное совпадение без учета регистра.',
+    ),
+    OpenApiParameter(
+        'employment_status',
+        OpenApiTypes.STR,
+        OpenApiParameter.QUERY,
+        required=False,
+        enum=EmploymentStatus.values,
+        description='Статус работы сотрудника.',
+    ),
+    OpenApiParameter(
+        'ordering',
+        OpenApiTypes.STR,
+        OpenApiParameter.QUERY,
+        required=False,
+        enum=ALLOWED_ORDERING_FIELDS,
+        description='Сортировка по full_name или birthday.',
+    ),
+]
+
+ADMIN_EMPLOYEE_LIST_FILTER_PARAMETERS = [
+    OpenApiParameter(
+        'status',
+        OpenApiTypes.STR,
+        OpenApiParameter.QUERY,
+        required=False,
+        enum=[Status.ACTIVE, Status.ARCHIVED],
+        description='Статус карточки. Архивные сотрудники доступны только в HR-ручках.',
+    ),
+    *EMPLOYEE_LIST_FILTER_PARAMETERS,
+]
 
 
 def get_employee_queryset():
@@ -59,8 +155,8 @@ def apply_employee_filters(queryset, request: Request, allow_archived: bool = Fa
     """Применяет фильтры, поиск и сортировку к queryset сотрудников.
 
     Поддерживает фильтрацию по status, tag, job_title, department_id,
-    direction_id, поиск по подстроке в full_name и job_title, а также
-    сортировку по full_name и birthday.
+    direction_id, city, employment_status, поиск по подстроке в full_name
+    и job_title, а также сортировку по full_name и birthday.
 
     Args:
         queryset: Базовый queryset сотрудников.
@@ -74,6 +170,8 @@ def apply_employee_filters(queryset, request: Request, allow_archived: bool = Fa
     job_title = params.get('job_title')
     department_id = params.get('department_id')
     direction_id = params.get('direction_id')
+    city = params.get('city')
+    employment_status = params.get('employment_status')
     ordering = params.get('ordering')
     if allow_archived and status == Status.ARCHIVED:
         queryset = queryset.filter(status=Status.ARCHIVED)
@@ -89,12 +187,26 @@ def apply_employee_filters(queryset, request: Request, allow_archived: bool = Fa
         queryset = queryset.filter(department_id=department_id)
     if direction_id:
         queryset = queryset.filter(department__parent_id=direction_id)
+    if city:
+        queryset = queryset.filter(city__iexact=city)
+    if employment_status:
+        queryset = queryset.filter(employment_status=employment_status)
     queryset = queryset.distinct()
     if ordering in ALLOWED_ORDERING_FIELDS:
         return queryset.order_by(ordering)
     return queryset
 
 
+@extend_schema_view(
+    list=extend_schema(
+        summary='Публичный список сотрудников',
+        description=(
+            'Возвращает только активных сотрудников. Даже если передать status=archived, '
+            'архивные сотрудники не попадут в ответ.'
+        ),
+        parameters=EMPLOYEE_LIST_FILTER_PARAMETERS,
+    )
+)
 class EmployeeViewSet(ReadOnlyModelViewSet):
     def get_queryset(self):
         return apply_employee_filters(get_employee_queryset(), self.request)
@@ -136,37 +248,42 @@ class EmployeeViewSet(ReadOnlyModelViewSet):
     list=extend_schema(
         summary='Административный список сотрудников',
         description='Возвращает сотрудников для таблицы админки с фильтрами и сортировкой.',
-        parameters=[
-            OpenApiParameter(
-                'status',
-                OpenApiTypes.STR,
-                OpenApiParameter.QUERY,
-                required=False,
-                enum=[Status.ACTIVE, Status.ARCHIVED],
-            ),
-            OpenApiParameter('search', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
-            OpenApiParameter('tag', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, many=True),
-            OpenApiParameter('job_title', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
-            OpenApiParameter('department_id', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
-            OpenApiParameter('direction_id', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
-            OpenApiParameter(
-                'ordering',
-                OpenApiTypes.STR,
-                OpenApiParameter.QUERY,
-                required=False,
-                enum=ALLOWED_ORDERING_FIELDS,
-            ),
-        ],
+        parameters=ADMIN_EMPLOYEE_LIST_FILTER_PARAMETERS,
     ),
     create=extend_schema(
         summary='Создать сотрудника',
+        description='Сотрудник добавляется в отдел через поле department, куда передается ID отдела.',
         request=EmployeeCreateSerializer,
         responses={status.HTTP_201_CREATED: EmployeeAdminDetailSerializer},
+        examples=[
+            OpenApiExample(
+                'Создание сотрудника в отделе',
+                value={
+                    'full_name': 'Иван Иванов',
+                    'job_title': 'Backend Developer',
+                    'email': 'ivan@example.com',
+                    'birthday': '1990-01-01',
+                    'department': 10,
+                    'city': 'Москва',
+                    'employment_status': EmploymentStatus.WORKING,
+                    'tags': ['Python', 'Django'],
+                },
+                request_only=True,
+            )
+        ],
     ),
     partial_update=extend_schema(
         summary='Частично обновить сотрудника',
+        description='Для переноса сотрудника в другой отдел передайте ID нового отдела в поле department.',
         request=EmployeeUpdateSerializer,
         responses={status.HTTP_200_OK: EmployeeAdminDetailSerializer},
+        examples=[
+            OpenApiExample(
+                'Перенос сотрудника в другой отдел',
+                value={'department': 11},
+                request_only=True,
+            )
+        ],
     ),
 )
 class EmployeeAdminViewSet(ModelViewSet):
@@ -220,21 +337,7 @@ class EmployeeAdminViewSet(ModelViewSet):
     @extend_schema(
         summary='Экспорт сотрудников в Excel',
         description='Выгружает сотрудников в XLSX с учётом фильтров и сортировки списка.',
-        parameters=[
-            OpenApiParameter('status', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
-            OpenApiParameter('search', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
-            OpenApiParameter('tag', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False, many=True),
-            OpenApiParameter('job_title', OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
-            OpenApiParameter('department_id', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
-            OpenApiParameter('direction_id', OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
-            OpenApiParameter(
-                'ordering',
-                OpenApiTypes.STR,
-                OpenApiParameter.QUERY,
-                required=False,
-                enum=ALLOWED_ORDERING_FIELDS,
-            ),
-        ],
+        parameters=ADMIN_EMPLOYEE_LIST_FILTER_PARAMETERS,
         responses={200: OpenApiResponse(response=OpenApiTypes.BINARY, description='XLSX-файл')},
     )
     @action(detail=False, methods=['get'], url_path='export')
@@ -273,6 +376,58 @@ class EmployeeAdminViewSet(ModelViewSet):
         response['Content-Disposition'] = 'attachment; filename="employees.xlsx"'
         return response
 
+    @extend_schema(
+        summary='Массовое действие над сотрудниками',
+        description=(
+            'Поддерживает действия archive, add_tag, remove_tag и change_department. '
+            'Для add_tag/remove_tag передайте params.tag, для change_department - params.department_id.'
+        ),
+        request=BulkActionRequestSerializer,
+        responses={status.HTTP_200_OK: BulkActionResponseSerializer},
+        examples=[
+            OpenApiExample(
+                'Массовый перенос сотрудников',
+                value={
+                    'employee_ids': [1, 2, 3],
+                    'action': 'change_department',
+                    'params': {'department_id': 10},
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                'Массовое добавление тега',
+                value={
+                    'employee_ids': [1, 2, 3],
+                    'action': 'add_tag',
+                    'params': {'tag': 7},
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                'Массовое удаление тега',
+                value={
+                    'employee_ids': [1, 2, 3],
+                    'action': 'remove_tag',
+                    'params': {'tag': 7},
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                'Массовая архивация',
+                value={
+                    'employee_ids': [1, 2, 3],
+                    'action': 'archive',
+                    'params': {},
+                },
+                request_only=True,
+            ),
+            OpenApiExample(
+                'Результат массового действия',
+                value={'total': 3, 'success': 3, 'failed': 0, 'details': []},
+                response_only=True,
+            ),
+        ],
+    )
     @action(detail=False, methods=['post'], url_path='bulk-action')
     def bulk_action(self, request: Request) -> Response:
         employee_ids = request.data.get('employee_ids', [])

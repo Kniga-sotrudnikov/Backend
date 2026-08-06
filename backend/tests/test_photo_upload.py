@@ -106,6 +106,43 @@ def test_photo_replacement_removes_old_files_from_disk(
     assert not os.path.exists(old_thumb_path)
 
 
+def test_photo_delete_removes_files_and_clears_urls(api_client, hr, employee_instance, upload_url, dummy_image_factory):
+    """Удаление фотографии очищает поля, удаляет файлы и возвращает null в карточке."""
+    api_client.force_authenticate(user=hr)
+    image_bytes = dummy_image_factory(200, 200)
+    uploaded_file = SimpleUploadedFile('avatar.jpg', image_bytes, content_type='image/jpeg')
+    api_client.post(upload_url, {'photo': uploaded_file}, format='multipart')
+
+    employee_instance.refresh_from_db()
+    photo_path = employee_instance.photo.path
+    thumb_path = employee_instance.photo_thumb.path
+    assert os.path.exists(photo_path)
+    assert os.path.exists(thumb_path)
+
+    delete_response = api_client.delete(upload_url)
+
+    assert delete_response.status_code == status.HTTP_204_NO_CONTENT
+    assert not os.path.exists(photo_path)
+    assert not os.path.exists(thumb_path)
+    employee_instance.refresh_from_db()
+    assert not employee_instance.photo
+    assert not employee_instance.photo_thumb
+
+    detail_response = api_client.get(reverse('employee-detail', kwargs={'pk': employee_instance.id}))
+    assert detail_response.status_code == status.HTTP_200_OK
+    assert detail_response.data['photo_url'] is None
+    assert detail_response.data['photo_original_url'] is None
+
+
+def test_photo_delete_permission_denied_for_non_hr(api_client, user, upload_url):
+    """Обычный пользователь не может удалить фотографию сотрудника."""
+    api_client.force_authenticate(user=user)
+
+    response = api_client.delete(upload_url)
+
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+
+
 def test_employee_list_returns_thumbnail_url(api_client, hr, employee_instance, dummy_image_factory):
     """Тест API списка: photo_url должен содержать путь к миниатюре (thumb)."""
     # 1. Сначала загрузим фото сотруднику, чтобы поля заполнились

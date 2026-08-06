@@ -46,6 +46,16 @@ class DepartmentBriefSerializer(serializers.ModelSerializer):
 class DepartmentDetailSerializer(serializers.ModelSerializer):
     """Детальная информация о подразделении с вложенными дочерними элементами."""
 
+    parent = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.all(),
+        required=False,
+        allow_null=True,
+        default=None,
+        help_text=(
+            'ID родительского направления или подразделения. Для отдела type=department передайте ID родителя; '
+            'для направления верхнего уровня parent может быть null.'
+        ),
+    )
     employee_count = serializers.IntegerField(read_only=True)
     children = serializers.SerializerMethodField()
     head = DepartmentHeadSerializer(read_only=True)

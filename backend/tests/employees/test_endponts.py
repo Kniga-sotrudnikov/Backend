@@ -1,3 +1,6 @@
+from io import BytesIO
+from zipfile import ZipFile
+
 import pytest
 from django.urls import reverse
 
@@ -424,6 +427,105 @@ def test_employee_list_filters_by_tag(auth_client, employee_record):
 
     assert response.status_code == 200
     assert response.data['count'] == 2
+
+
+@pytest.mark.django_db
+def test_employee_list_filters_by_city_case_insensitive(auth_client):
+    department = Department.objects.create(
+        name='Backend',
+        type=Department.Type.DEPARTMENT,
+    )
+    Employee.objects.create(
+        full_name='Иван Иванов',
+        job_title='Backend Developer',
+        email='ivan-city@example.com',
+        birthday='1990-01-01',
+        department=department,
+        city='Москва',
+    )
+    Employee.objects.create(
+        full_name='Мария Петрова',
+        job_title='HR Manager',
+        email='maria-city@example.com',
+        birthday='1992-03-15',
+        department=department,
+        city='Казань',
+    )
+
+    response = auth_client.get(reverse('employee-list'), data={'city': 'москва'})
+
+    assert response.status_code == 200
+    assert response.data['count'] == 1
+    assert response.data['results'][0]['full_name'] == 'Иван Иванов'
+
+
+@pytest.mark.django_db
+def test_employee_list_filters_by_employment_status(auth_client):
+    department = Department.objects.create(
+        name='Backend',
+        type=Department.Type.DEPARTMENT,
+    )
+    Employee.objects.create(
+        full_name='Иван Иванов',
+        job_title='Backend Developer',
+        email='ivan-remote@example.com',
+        birthday='1990-01-01',
+        department=department,
+        employment_status='remote',
+    )
+    Employee.objects.create(
+        full_name='Мария Петрова',
+        job_title='HR Manager',
+        email='maria-vacation@example.com',
+        birthday='1992-03-15',
+        department=department,
+        employment_status='vacation',
+    )
+
+    response = auth_client.get(reverse('employee-list'), data={'employment_status': 'remote'})
+
+    assert response.status_code == 200
+    assert response.data['count'] == 1
+    assert response.data['results'][0]['full_name'] == 'Иван Иванов'
+
+
+@pytest.mark.django_db
+def test_admin_list_and_export_filter_by_city_and_employment_status(hr_client):
+    department = Department.objects.create(
+        name='Backend',
+        type=Department.Type.DEPARTMENT,
+    )
+    Employee.objects.create(
+        full_name='Иван Иванов',
+        job_title='Backend Developer',
+        email='ivan-admin-filter@example.com',
+        birthday='1990-01-01',
+        department=department,
+        city='Москва',
+        employment_status='remote',
+    )
+    Employee.objects.create(
+        full_name='Мария Петрова',
+        job_title='HR Manager',
+        email='maria-admin-filter@example.com',
+        birthday='1992-03-15',
+        department=department,
+        city='Москва',
+        employment_status='working',
+    )
+
+    params = {'city': 'москва', 'employment_status': 'remote'}
+    list_response = hr_client.get(reverse('admin-employee-list'), data=params)
+    export_response = hr_client.get(reverse('admin-employee-export'), data=params)
+
+    assert list_response.status_code == 200
+    assert list_response.data['count'] == 1
+    assert list_response.data['results'][0]['full_name'] == 'Иван Иванов'
+    assert export_response.status_code == 200
+    with ZipFile(BytesIO(export_response.content)) as archive:
+        sheet_xml = archive.read('xl/worksheets/sheet1.xml').decode()
+    assert 'Иван Иванов' in sheet_xml
+    assert 'Мария Петрова' not in sheet_xml
 
 
 @pytest.mark.django_db

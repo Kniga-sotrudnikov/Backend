@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from employees.models import Employee, InaccuracyReport
 from employees.services import EmployeeCreate, EmployeeUpdate, create_employee, update_employee
+from structure.models import Department
 from tags.models import Tag
 from tags.serializers import TagSerializer
 from tags.services import assign_tags, remove_tags
@@ -244,6 +245,10 @@ class EmployeeAdminDetailSerializer(EmployeeDetailSerializer):
 
 
 class EmployeeCreateSerializer(serializers.ModelSerializer):
+    department = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.filter(type=Department.Type.DEPARTMENT),
+        help_text='ID отдела, в который добавляется сотрудник.',
+    )
     role_description = serializers.ListField(
         child=serializers.CharField(allow_blank=True),
         required=False,
@@ -320,6 +325,11 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
 
 
 class EmployeeUpdateSerializer(serializers.ModelSerializer):
+    department = serializers.PrimaryKeyRelatedField(
+        queryset=Department.objects.filter(type=Department.Type.DEPARTMENT),
+        required=False,
+        help_text='ID отдела для переноса сотрудника.',
+    )
     role_description = serializers.ListField(
         child=serializers.CharField(allow_blank=True),
         required=False,
@@ -410,6 +420,38 @@ class EmployeeUpdateSerializer(serializers.ModelSerializer):
             if hasattr(employee, 'prefetched_active_employee_tags'):
                 delattr(employee, 'prefetched_active_employee_tags')
         return employee
+
+
+class BulkActionRequestSerializer(serializers.Serializer):
+    employee_ids = serializers.ListField(
+        child=serializers.IntegerField(min_value=1),
+        help_text='ID сотрудников, к которым применяется массовое действие.',
+    )
+    action = serializers.ChoiceField(
+        choices=('archive', 'add_tag', 'remove_tag', 'change_department'),
+        help_text='Действие: archive, add_tag, remove_tag или change_department.',
+    )
+    params = serializers.DictField(
+        child=serializers.JSONField(),
+        required=False,
+        default=dict,
+        help_text='Параметры действия: tag для add_tag/remove_tag, department_id для change_department.',
+    )
+
+
+class BulkActionResultDetailSerializer(serializers.Serializer):
+    employee_id = serializers.IntegerField(help_text='ID сотрудника, для которого действие не выполнилось.')
+    error = serializers.CharField(help_text='Описание ошибки выполнения действия.')
+
+
+class BulkActionResponseSerializer(serializers.Serializer):
+    total = serializers.IntegerField(help_text='Количество сотрудников в запросе.')
+    success = serializers.IntegerField(help_text='Количество успешно обработанных сотрудников.')
+    failed = serializers.IntegerField(help_text='Количество сотрудников, для которых действие завершилось ошибкой.')
+    details = BulkActionResultDetailSerializer(
+        many=True,
+        help_text='Список ошибок по отдельным сотрудникам.',
+    )
 
 
 class InaccuracyReportCreateSerializer(serializers.ModelSerializer):
