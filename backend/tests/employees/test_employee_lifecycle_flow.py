@@ -1,11 +1,20 @@
 import uuid
+from django.contrib.auth import get_user_model
+from django.core import mail
 from django.urls import reverse
 from rest_framework.test import APIClient
 from employees.models import Employee
 
+User = get_user_model()
 
-def test_employee_lifecycle_integration_flow(db, hr, user, department, tag):
-    """Интеграционный тест: создание -> выдача -> архивация -> видимость в админке."""
+
+def test_employee_lifecycle_integration_flow(db, hr, user, department, tag, api_client, login_url):
+    """
+    Интеграционный тест: создание -> выдача -> архивация -> видимость в админке.
+
+    Проверяет весь сквозной сценарий, включая автоматическую генерацию аккаунта
+    пользователя, отправку почты и успешный вход по сгенерированному паролю.
+    """
 
     hr_client = APIClient()
     hr_client.force_authenticate(user=hr)
@@ -13,7 +22,7 @@ def test_employee_lifecycle_integration_flow(db, hr, user, department, tag):
     auth_client = APIClient()
     auth_client.force_authenticate(user=user)
 
-    # ШАГ 1: HR создает сотрудника со связью с отделом
+    # ШАГ 1: HR создает сотрудника со связью с отделом (user не передается)
     unique_email = f'konstantin_{uuid.uuid4().hex[:8]}@company.com'
     create_url = reverse('admin-employee-list')
     employee_data = {
@@ -30,11 +39,34 @@ def test_employee_lifecycle_integration_flow(db, hr, user, department, tag):
     created_employee = Employee.objects.get(email=unique_email)
     employee_id = created_employee.id
 
+    # Проверяем, что автоматически создался User с ролью employee
+    assert created_employee.user is not None, 'User не был создан автоматически'
+    assert created_employee.user.email == unique_email
+    assert created_employee.user.role == 'employee'
+
+    # Проверяем, что ушло ровно 1 приветственное письмо
+    assert len(mail.outbox) == 1
+    assert unique_email in mail.outbox[0].to
+    assert 'Временный пароль:' in mail.outbox[0].body
+
+    # Вытаскиваем пароль из письма и проверяем JWT-авторизацию нового сотрудника
+    email_body = mail.outbox[0].body
+    password_line = [line for line in email_body.split('\n') if 'Временный пароль:' in line]
+    temporary_password = password_line[0].split(': ')[1].strip()
+
+    login_payload = {
+        'email': unique_email,
+        'password': temporary_password
+    }
+    login_response = api_client.post(login_url, login_payload, format='json')
+    assert login_response.status_code == 200, f'Новый сотрудник не смог войти: {login_response.data}'
+    assert 'access' in login_response.data
+
     # ШАГ 2: HR привязывает тег к сотруднику (через массовое добавление тегов)
     assign_tag_url = reverse('bulk-add-tags')
     tag_data = {
-        'employee_ids': [employee_id],
-        'tag_ids': [tag.id]
+        'employee_ids': (employee_id,),
+        'tag_ids': (tag.id,)
     }
 
     tag_response = hr_client.post(assign_tag_url, data=tag_data, format='json')
@@ -93,3 +125,74 @@ def test_employee_lifecycle_integration_flow(db, hr, user, department, tag):
     )
 
     assert archived_emp_in_admin is not None, f'Сотрудник не найден в админке. Ответ: {admin_data}'
+
+
+def test_create_employee_with_existing_user_backward_compatibility(db, hr, employee, department):
+    """
+    Проверяет сохранение обратной совместимости.
+
+    Если при создании карточки сотрудника явно передается id существующего
+    пользователя, система не должна генерировать новый аккаунт, изменять пароль
+    или отправлять приветственные письма.
+    """
+    hr_client = APIClient()
+    hr_client.force_authenticate(user=hr)
+
+    # Очищаем outbox, чтобы проверить, что писем точно не было
+    mail.outbox.clear()
+
+    create_url = reverse('admin-employee-list')
+    employee_data = {
+        'full_name': 'Существующий Юзер',
+        'job_title': 'Frontend Developer',
+        'email': employee.email,
+        'birthday': '1990-01-01',
+        'department': department.id,
+        'user': employee.id
+    }
+
+    response = hr_client.post(create_url, data=employee_data, format='json')
+    assert response.status_code == 201
+
+    # Писем отправлено быть не должно
+    assert len(mail.outbox) == 0
+
+    # Пароль существующего пользователя из фиктуры не изменился
+    assert employee.check_password('employeepassword123')
+
+
+def test_create_employee_smtp_error_handling(db, hr, department, monkeypatch):
+    """
+    Проверяет предсказуемую обработку ошибок почтового сервера SMTP.
+
+    Если Яндекс SMTP возвращает ошибку, транзакция должна откатиться,
+    а HR должен получить понятную ValidationError.
+    """
+    hr_client = APIClient()
+    hr_client.force_authenticate(user=hr)
+
+    # Симулируем падение функции отправки почты send_mail
+    def mock_send_mail(*args, **kwargs):
+        raise Exception('SMTP Authentication Error')
+
+    monkeypatch.setattr('employees.services.send_mail', mock_send_mail)
+
+    create_url = reverse('admin-employee-list')
+    employee_data = {
+        'full_name': 'Сбойный Сотрудник',
+        'job_title': 'DevOps',
+        'email': 'fail_smtp@company.com',
+        'birthday': '1992-12-12',
+        'department': department.id
+    }
+
+    response = hr_client.post(create_url, data=employee_data, format='json')
+
+    # Система должна вернуть ошибку 400 (ValidationError) вместо падения в 500
+    assert response.status_code == 400
+    field_errors = response.data.get('field_errors', response.data)
+    assert 'email' in field_errors or 'non_field_errors' in field_errors
+
+    # Из-за отката транзакции ни сотрудник, ни пользователь не должны создаться в БД
+    assert not User.objects.filter(email='fail_smtp@company.com').exists()
+    assert not Employee.objects.filter(email='fail_smtp@company.com').exists()

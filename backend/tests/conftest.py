@@ -12,7 +12,6 @@ from favorites.models import Favorite
 from structure.models import Department
 from tags.models import Tag
 from vacancies.models import Vacancy
-from structure.models import Department
 
 
 User = get_user_model()
