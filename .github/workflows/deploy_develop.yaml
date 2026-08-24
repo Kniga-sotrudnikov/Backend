@@ -49,6 +49,15 @@ jobs:
       CI_ALLOWED_HOSTS: ${{ vars.ALLOWED_HOSTS }}
       CI_CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
       CI_CSRF_TRUSTED_ORIGINS: ${{ vars.CSRF_TRUSTED_ORIGINS }}
+      CI_EMAIL_BACKEND: ${{ vars.EMAIL_BACKEND }}
+      CI_EMAIL_HOST: ${{ vars.EMAIL_HOST }}
+      CI_EMAIL_PORT: ${{ vars.EMAIL_PORT }}
+      CI_EMAIL_USE_TLS: ${{ vars.EMAIL_USE_TLS }}
+      CI_EMAIL_USE_SSL: ${{ vars.EMAIL_USE_SSL }}
+      CI_EMAIL_HOST_USER: ${{ vars.EMAIL_HOST_USER }}
+      CI_EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
+      CI_DEFAULT_FROM_EMAIL: ${{ vars.DEFAULT_FROM_EMAIL }}
+
 
     runs-on: ubuntu-latest
     steps:
