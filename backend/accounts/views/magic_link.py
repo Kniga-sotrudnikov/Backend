@@ -40,7 +40,7 @@ class MagicLinkRequestView(GenericAPIView):
                 # lives; in production it happens to match CSRF_TRUSTED_ORIGINS because
                 # Caddy serves both frontend and API from the same domain.
                 base_url = settings.CORS_ALLOWED_ORIGINS[0].rstrip('/')
-                link = f'{base_url}/auth/login/magic-link?token={raw_token}'
+                link = f'{base_url}/magic-login?token={raw_token}'
                 send_magic_link_email.delay(user.email, link)
             except Exception:
                 # Never leak account existence: a broker outage or misconfigured

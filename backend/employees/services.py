@@ -148,9 +148,7 @@ def create_employee(data: EmployeeCreate, created_by: AbstractBaseUser | None = 
         data.user = user
         employee = Employee.objects.create(**data.__dict__, created_by=created_by)
 
-        transaction.on_commit(
-            lambda: _send_welcome_email(data.email, generated_password, data.full_name)
-        )
+        transaction.on_commit(lambda: _send_welcome_email(data.email, generated_password, data.full_name))
 
         return employee
 

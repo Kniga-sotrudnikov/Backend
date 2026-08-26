@@ -23,7 +23,7 @@ def test_task_sends_email_with_link(db, settings, mailoutbox, caplog):
     """Задача отправляет одно письмо, тело которого содержит ссылку, без токена в логах."""
     settings.EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
     settings.DEFAULT_FROM_EMAIL = 'noreply@example.com'
-    link = 'https://example.com/auth/login/magic-link?token=SECRET_RAW_TOKEN'
+    link = 'https://example.com/magic-login?token=SECRET_RAW_TOKEN'
 
     with caplog.at_level(logging.INFO):
         send_magic_link_email('user@example.com', link)
@@ -59,7 +59,7 @@ def test_view_returns_200_and_dispatches_for_active_user(db, api_client, user, m
     call_args = delay_mock.call_args.args
     assert call_args[0] == user.email
     link = call_args[1]
-    assert '/auth/login/magic-link?token=' in link
+    assert '/magic-login?token=' in link
     # The raw token/link must never reach the view's log stream (security regression guard).
     raw_token = link.split('token=', 1)[1]
     assert raw_token not in caplog.text
@@ -76,7 +76,7 @@ def test_view_uses_cors_allowed_origins_not_csrf_trusted_origins(db, api_client,
 
     assert response.status_code == 200
     link = delay_mock.call_args.args[1]
-    assert link.startswith('https://frontend.example.com/auth/login/magic-link?token=')
+    assert link.startswith('https://frontend.example.com/magic-login?token=')
 
 
 def test_view_returns_200_when_cors_allowed_origins_empty(db, api_client, user, magic_link_request_url, settings):
