@@ -11,19 +11,26 @@ from django.conf import settings
 
 
 SETTINGS_PATH = Path(__file__).resolve().parents[1] / 'employeebook' / 'settings.py'
+ENV_PATH = SETTINGS_PATH.parents[2] / '.env'
 
 
 def load_settings(monkeypatch, **env):
     """Загружает settings.py изолированно с подменёнными переменными окружения.
 
-    python-decouple читает os.environ раньше .env, поэтому подмена работает.
-    Значение None удаляет переменную.
+    Тест не должен зависеть от содержимого локального .env, поэтому репозиторий
+    decouple подменяется копией без ключей, которыми управляет сам тест.
+    Значение None означает «переменная не задана нигде».
     """
+    from decouple import RepositoryEnv
+
+    repository = dict(RepositoryEnv(ENV_PATH).data)
     for key, value in env.items():
+        repository.pop(key, None)
         if value is None:
             monkeypatch.delenv(key, raising=False)
         else:
             monkeypatch.setenv(key, value)
+    monkeypatch.setattr('decouple.RepositoryEnv', lambda source: repository)
 
     spec = importlib.util.spec_from_file_location('_settings_probe', SETTINGS_PATH)
     module = importlib.util.module_from_spec(spec)

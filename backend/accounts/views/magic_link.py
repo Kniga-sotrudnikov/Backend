@@ -1,3 +1,6 @@
+import logging
+
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
@@ -11,6 +14,7 @@ from accounts.serializers.magic_link import MagicLinkRequestSerializer, MagicLin
 from accounts.service import generate_magic_token, get_token_instance
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 @extend_schema(
@@ -29,8 +33,16 @@ class MagicLinkRequestView(GenericAPIView):
         user = User.objects.filter(email=email, is_active=True).first()
         if user:
             raw_token = generate_magic_token(user)
-            link = f'http://localhost:8000/auth/login/magic-link?token={raw_token}'
-            print(f'Magic link: {link}')
+            # Stub: no mail is sent yet, the link is only exposed through the log.
+            # The token is DEBUG-only so it never lands in production logs.
+            base_url = settings.CSRF_TRUSTED_ORIGINS[0].rstrip('/')
+            link = f'{base_url}/auth/login/magic-link?token={raw_token}'
+            logger.info('Magic link generated for user %s', user.pk)
+            logger.debug('Magic link: %s', link)
+        else:
+            # Always answers 200 to avoid email enumeration, so the miss is only visible here.
+            logger.info('Magic link requested for an unknown or inactive account')
+            logger.debug('Magic link requested for an unknown or inactive email: %s', email)
         return Response({'detail': 'Ссылка отправлена на указанную почту'}, status=status.HTTP_200_OK)
 
 

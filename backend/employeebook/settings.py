@@ -44,6 +44,12 @@ ALLOWED_HOSTS = config(
     default='localhost,127.0.0.1',
 )
 
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    cast=lambda v: [s.strip() for s in v.split(',') if s.strip()],
+    default='http://localhost:8000,http://127.0.0.1:8000',
+)
+
 # CORS
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS',
