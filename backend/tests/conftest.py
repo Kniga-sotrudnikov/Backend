@@ -19,8 +19,8 @@ User = get_user_model()
 
 @pytest.fixture
 def _django_setup():
-    """Регистрирует задачи Celery для уведомлений."""
-    celery_app.autodiscover_tasks(['notifications'], force=True)
+    """Регистрирует задачи Celery для notifications и accounts."""
+    celery_app.autodiscover_tasks(['notifications', 'accounts'], force=True)
 
 
 @pytest.fixture

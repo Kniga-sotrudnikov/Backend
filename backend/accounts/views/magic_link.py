@@ -12,6 +12,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.serializers.magic_link import MagicLinkRequestSerializer, MagicLinkVerifySerializer
 from accounts.service import generate_magic_token, get_token_instance
+from accounts.tasks import send_magic_link_email
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -33,16 +34,18 @@ class MagicLinkRequestView(GenericAPIView):
         user = User.objects.filter(email=email, is_active=True).first()
         if user:
             raw_token = generate_magic_token(user)
-            # Stub: no mail is sent yet, the link is only exposed through the log.
-            # The token is DEBUG-only so it never lands in production logs.
             base_url = settings.CSRF_TRUSTED_ORIGINS[0].rstrip('/')
             link = f'{base_url}/auth/login/magic-link?token={raw_token}'
+            try:
+                send_magic_link_email.delay(user.email, link)
+            except Exception:
+                # Never leak account existence: a broker outage must not turn the
+                # user-exists branch into a 500 while the miss branch stays 200.
+                logger.exception('Failed to enqueue magic link email for user %s', user.pk)
             logger.info('Magic link generated for user %s', user.pk)
-            logger.debug('Magic link: %s', link)
         else:
             # Always answers 200 to avoid email enumeration, so the miss is only visible here.
             logger.info('Magic link requested for an unknown or inactive account')
-            logger.debug('Magic link requested for an unknown or inactive email: %s', email)
         return Response({'detail': 'Ссылка отправлена на указанную почту'}, status=status.HTTP_200_OK)
 
 
