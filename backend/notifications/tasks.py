@@ -82,7 +82,7 @@ def check_upcoming_birthdays() -> str:
         send_mail(
             subject=subject,
             message=message,
-            from_email='noreply@employeebook.ru',
+            from_email=None,
             recipient_list=settings.recipients,
             fail_silently=False,
         )
