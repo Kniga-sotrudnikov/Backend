@@ -34,13 +34,18 @@ class MagicLinkRequestView(GenericAPIView):
         user = User.objects.filter(email=email, is_active=True).first()
         if user:
             raw_token = generate_magic_token(user)
-            base_url = settings.CSRF_TRUSTED_ORIGINS[0].rstrip('/')
-            link = f'{base_url}/auth/login/magic-link?token={raw_token}'
             try:
+                # CORS_ALLOWED_ORIGINS (not CSRF_TRUSTED_ORIGINS) holds the frontend's
+                # own origin, which is where the SPA route that consumes the token
+                # lives; in production it happens to match CSRF_TRUSTED_ORIGINS because
+                # Caddy serves both frontend and API from the same domain.
+                base_url = settings.CORS_ALLOWED_ORIGINS[0].rstrip('/')
+                link = f'{base_url}/auth/login/magic-link?token={raw_token}'
                 send_magic_link_email.delay(user.email, link)
             except Exception:
-                # Never leak account existence: a broker outage must not turn the
-                # user-exists branch into a 500 while the miss branch stays 200.
+                # Never leak account existence: a broker outage or misconfigured
+                # CORS_ALLOWED_ORIGINS must not turn the user-exists branch into a
+                # 500 while the miss branch stays 200.
                 logger.exception('Failed to enqueue magic link email for user %s', user.pk)
             logger.info('Magic link generated for user %s', user.pk)
         else:

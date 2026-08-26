@@ -53,7 +53,7 @@ CSRF_TRUSTED_ORIGINS = config(
 # CORS
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS',
-    cast=lambda v: [s.strip() for s in v.split(',')],
+    cast=lambda v: [s.strip() for s in v.split(',') if s.strip()],
     default='http://localhost:3000',
 )
 
