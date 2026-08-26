@@ -33,6 +33,10 @@ except FileNotFoundError:
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
 
+# Verbosity of the root logger. Accepts standard level names:
+# DEBUG | INFO | WARNING | ERROR | CRITICAL.
+LOG_LEVEL = config('LOG_LEVEL', default='DEBUG' if DEBUG else 'INFO')
+
 
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS',
@@ -184,55 +188,37 @@ MEDIA_ROOT = Path('/var/www/django/media')
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-    'filters': {
-        'require_debug_false': {
-            '()': 'django.utils.log.RequireDebugFalse',
-        },
-    },
     'formatters': {
         'console': {
-            'format': '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
+            'format': '%(asctime)s %(levelname)s %(name)s: %(message)s [in %(pathname)s:%(lineno)d]',
         },
     },
     'handlers': {
-        # Always active — writes to stdout in both dev and production
+        # Always active — writes to stdout, which is what `docker logs` reads
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'console',
             'level': 'DEBUG',
         },
-        # Production only — writes WARNING+ to file
-        'file': {
-            'class': 'logging.FileHandler',
-            'formatter': 'console',
-            'filters': ['require_debug_false'],
-            'level': 'WARNING',
-            'filename': 'debug.log',
-        },
+    },
+    # Catch-all for project apps and third-party libraries. Without it their
+    # records reach a handler-less root logger and are dropped silently.
+    'root': {
+        'handlers': ['console'],
+        'level': LOG_LEVEL,
     },
     'loggers': {
-        # Django internals
+        # Django internals — pinned to INFO so LOG_LEVEL=DEBUG does not flood
+        # the console with autoreload and template chatter
         'django': {
             'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
-        # SQL queries — INFO to avoid flooding in dev, switch to DEBUG when needed
+        # SQL queries — INFO to avoid flooding, switch to DEBUG when needed
         'django.db.backends': {
             'handlers': ['console'],
             'level': 'INFO',
-            'propagate': False,
-        },
-        # Email sending — useful to trace in both dev and production
-        'django.core.mail': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-        # Security events: admin brute-force, honeypot, invalid form attempts
-        'security': {
-            'handlers': ['console', 'file'],
-            'level': 'WARNING',
             'propagate': False,
         },
     },
