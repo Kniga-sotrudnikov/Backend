@@ -8,12 +8,15 @@ from employees.models import Employee
 User = get_user_model()
 
 
-def test_employee_lifecycle_integration_flow(db, hr, user, department, tag, api_client, login_url):
+def test_employee_lifecycle_integration_flow(
+    db, hr, user, department, tag, api_client, login_url, django_capture_on_commit_callbacks
+):
     """
     Интеграционный тест: создание -> выдача -> архивация -> видимость в админке.
 
     Проверяет весь сквозной сценарий, включая автоматическую генерацию аккаунта
-    пользователя, отправку почты и успешный вход по сгенерированному паролю.
+    пользователя, отправку почты после коммита транзакции и успешный вход по
+    сгенерированному паролю.
     """
 
     hr_client = APIClient()
@@ -33,7 +36,8 @@ def test_employee_lifecycle_integration_flow(db, hr, user, department, tag, api_
         'department': department.id
     }
 
-    create_response = hr_client.post(create_url, data=employee_data, format='json')
+    with django_capture_on_commit_callbacks(execute=True):
+        create_response = hr_client.post(create_url, data=employee_data, format='json')
     assert create_response.status_code == 201, f'Не удалось создать сотрудника: {create_response.data}'
 
     created_employee = Employee.objects.get(email=unique_email)
@@ -161,12 +165,13 @@ def test_create_employee_with_existing_user_backward_compatibility(db, hr, emplo
     assert employee.check_password('employeepassword123')
 
 
-def test_create_employee_smtp_error_handling(db, hr, department, monkeypatch):
+def test_create_employee_smtp_error_handling(db, hr, department, monkeypatch, django_capture_on_commit_callbacks):
     """
-    Проверяет предсказуемую обработку ошибок почтового сервера SMTP.
+    Проверяет, что сбой отправки приветственного письма не мешает создать сотрудника.
 
-    Если Яндекс SMTP возвращает ошибку, транзакция должна откатиться,
-    а HR должен получить понятную ValidationError.
+    Письмо отправляется после коммита транзакции (transaction.on_commit), поэтому
+    падение SMTP (в т.ч. когда Yandex SMTP уже отправил письмо, но оборвал
+    соединение при закрытии) не должно откатывать уже сохранённых User и Employee.
     """
     hr_client = APIClient()
     hr_client.force_authenticate(user=hr)
@@ -186,13 +191,15 @@ def test_create_employee_smtp_error_handling(db, hr, department, monkeypatch):
         'department': department.id
     }
 
-    response = hr_client.post(create_url, data=employee_data, format='json')
+    with django_capture_on_commit_callbacks(execute=True):
+        response = hr_client.post(create_url, data=employee_data, format='json')
 
-    # Система должна вернуть ошибку 400 (ValidationError) вместо падения в 500
-    assert response.status_code == 400
-    field_errors = response.data.get('field_errors', response.data)
-    assert 'email' in field_errors or 'non_field_errors' in field_errors
+    # Сотрудник должен быть создан несмотря на сбой отправки письма
+    assert response.status_code == 201, response.data
 
-    # Из-за отката транзакции ни сотрудник, ни пользователь не должны создаться в БД
-    assert not User.objects.filter(email='fail_smtp@company.com').exists()
-    assert not Employee.objects.filter(email='fail_smtp@company.com').exists()
+    # User и Employee должны быть сохранены в БД
+    assert User.objects.filter(email='fail_smtp@company.com').exists()
+    assert Employee.objects.filter(email='fail_smtp@company.com').exists()
+
+    # Письмо не должно попасть в outbox, т.к. отправка упала
+    assert not any(m.to == ['fail_smtp@company.com'] for m in mail.outbox)

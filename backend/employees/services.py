@@ -11,7 +11,6 @@ from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.db import transaction
 from django.utils.crypto import get_random_string
-from rest_framework.exceptions import ValidationError as DRFValidationError
 
 from employees.models import Employee, EmploymentStatus, Status
 from structure.models import Department
@@ -82,8 +81,15 @@ def _parse_full_name(full_name: str) -> tuple[str, str]:
     return full_name, ''
 
 
-def _send_welcome_email(email: str, password: str, full_name: str) -> bool:
-    """Отправляет сотруднику приветственное письмо с учетными данными."""
+def _send_welcome_email(email: str, password: str, full_name: str) -> None:
+    """
+    Отправляет сотруднику приветственное письмо с учетными данными.
+
+    Вызывается через transaction.on_commit, т.е. уже после того как User и
+    Employee успешно сохранены в БД. Поэтому сбой отправки (в т.ч. ложный,
+    когда Yandex SMTP уже принял письмо, но разорвал соединение при закрытии)
+    не должен и не может откатить создание сотрудника — он только логируется.
+    """
     subject = 'Добро пожаловать в Книгу Сотрудников!'
     message = (
         f'Здравствуйте, {full_name}!\n\n'
@@ -101,10 +107,8 @@ def _send_welcome_email(email: str, password: str, full_name: str) -> bool:
             recipient_list=[email],
             fail_silently=False,
         )
-        return True
     except Exception as exc:
         logger.error(f'Ошибка отправки приветственного письма на {email}: {str(exc)}')
-        return False
 
 
 def create_employee(data: EmployeeCreate, created_by: AbstractBaseUser | None = None) -> Employee:
@@ -112,8 +116,9 @@ def create_employee(data: EmployeeCreate, created_by: AbstractBaseUser | None = 
     Создаёт сотрудника.
 
     Если аккаунт пользователя (user) не был передан явно, автоматически
-    генерирует для него учетную запись, создает безопасный пароль и отправляет
-    уведомление на email через Yandex SMTP.
+    генерирует для него учетную запись, создает безопасный пароль и после
+    успешного коммита транзакции отправляет уведомление на email через
+    Yandex SMTP. Сбой отправки письма не влияет на факт создания сотрудника.
     """
     if data.user is not None:
         return Employee.objects.create(**data.__dict__, created_by=created_by)
@@ -143,16 +148,9 @@ def create_employee(data: EmployeeCreate, created_by: AbstractBaseUser | None = 
         data.user = user
         employee = Employee.objects.create(**data.__dict__, created_by=created_by)
 
-        email_sent = _send_welcome_email(data.email, generated_password, data.full_name)
-        if not email_sent:
-            raise DRFValidationError(
-                {
-                    'email': (
-                        'Сотрудник не создан: ошибка отправки приветственного письма через SMTP. '
-                        'Проверьте конфигурацию почтового сервера.'
-                    )
-                }
-            )
+        transaction.on_commit(
+            lambda: _send_welcome_email(data.email, generated_password, data.full_name)
+        )
 
         return employee
 
