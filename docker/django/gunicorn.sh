@@ -26,7 +26,7 @@ python /code/backend/manage.py collectstatic --noinput --clear
 # python /code/backend/manage.py compilemessages
 
 # create superuser with DJANGO_SUPERUSER_USERNAME, DJANGO_SUPERUSER_PASSWORD, DJANGO_SUPERUSER_EMAIL
-python /code/backend/manage.py createsuperuser --no-input --full_name Admin || true
+python /code/backend/manage.py createsuperuser  --no-input  --first_name Super --last_name Admin || true
 
 
 # Precompress static files with brotli and gzip.
