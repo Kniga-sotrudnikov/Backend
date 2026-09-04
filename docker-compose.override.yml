@@ -29,12 +29,12 @@ services:
       # We only mount source code in development:
       - .:/code
 
-#  celery_worker:
-#    volumes:
-#      # We only mount source code in development:
-#      - .:/code
-#
-#  celery_beat:
-#    volumes:
-#      # We only mount source code in development:
-#      - .:/code
+  celery_worker:
+    volumes:
+      # We only mount source code in development:
+      - .:/code
+  
+  celery_beat:
+    volumes:
+      # We only mount source code in development:
+      - .:/code

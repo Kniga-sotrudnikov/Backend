@@ -9,7 +9,7 @@ readme = "README.md"
 
 
 [tool.pytest.ini_options]
-addopts = "-v --tb=short --import-mode=importlib"
+addopts = "-v --tb=short --import-mode=importlib --cov=backend --cov-report=term-missing --cov-fail-under=70"
 testpaths = ["backend/tests"]
 pythonpath = ["backend"]
 DJANGO_SETTINGS_MODULE = "employeebook.settings"
@@ -65,13 +65,14 @@ convention = "google"
 
 # Coverage
 [tool.coverage.run]
-source = ["src"]
+source = ["backend"]
 omit = [
     "*/migrations/*",
     "*/tests/*",
     "*/__pycache__/*",
     "*/settings/*",
 ]
+
 
 [tool.coverage.report]
 exclude_lines = [
@@ -87,4 +88,4 @@ exclude_lines = [
     "@(abc\\.)?abstractmethod",
 ]
 [tool.ruff.lint.isort]
-known-first-party = ["accounts"]
+known-first-party = ["accounts", "core", "structure", "tags", "favorites", "employees"]

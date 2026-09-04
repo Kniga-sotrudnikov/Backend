@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 import sys
 from datetime import timedelta
 from pathlib import Path
@@ -28,13 +29,13 @@ except FileNotFoundError:
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-r@^%=l+_mcgnru4owa!(j6z@+j*-u2w2)5pgzu#ehlm_+z6r@^'
-
 # SECURITY WARNING: don't run with debug turned on in production!
 SECRET_KEY = config('SECRET_KEY')
 DEBUG = config('DEBUG', default=False, cast=bool)
-APP_ENV = config('APP_ENV', default='development')
+
+# Verbosity of the root logger. Accepts standard level names:
+# DEBUG | INFO | WARNING | ERROR | CRITICAL.
+LOG_LEVEL = config('LOG_LEVEL', default='DEBUG' if DEBUG else 'INFO')
 
 
 ALLOWED_HOSTS = config(
@@ -43,10 +44,16 @@ ALLOWED_HOSTS = config(
     default='localhost,127.0.0.1',
 )
 
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    cast=lambda v: [s.strip() for s in v.split(',') if s.strip()],
+    default='http://localhost:8000,http://127.0.0.1:8000',
+)
+
 # CORS
 CORS_ALLOWED_ORIGINS = config(
     'CORS_ALLOWED_ORIGINS',
-    cast=lambda v: [s.strip() for s in v.split(',')],
+    cast=lambda v: [s.strip() for s in v.split(',') if s.strip()],
     default='http://localhost:3000',
 )
 
@@ -59,17 +66,23 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.postgres',
     # Additional
     'rest_framework',
     'rest_framework_simplejwt',
     'drf_spectacular',
+    'django_celery_beat',
     'corsheaders',
     # Local
     'core',
+    'employees',
     'structure',
     'tags',
     'accounts.apps.AccountsConfig',
+    'favorites.apps.FavoritesConfig',
     'medias',
+    'notifications',
+    'vacancies',
 ]
 
 MIDDLEWARE = [
@@ -82,6 +95,11 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+if DEBUG:
+    INSTALLED_APPS.append('debug_toolbar')
+    MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
+    INTERNAL_IPS = ['127.0.0.1', 'localhost']
 
 ROOT_URLCONF = 'employeebook.urls'
 
@@ -148,7 +166,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ru-ru'
 
 LOCALE_PATHS = [str(BASE_DIR / 'locale') if DEBUG else '/var/www/django/locale']
 
@@ -170,61 +188,43 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # Media files (User's uploaded content)
 DEFAULT_FILE_STORAGE = 'core.storage.HashedFileStorage'
 MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'mediafiles'
+MEDIA_ROOT = Path('/var/www/django/media')
 
 
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-    'filters': {
-        'require_debug_false': {
-            '()': 'django.utils.log.RequireDebugFalse',
-        },
-    },
     'formatters': {
         'console': {
-            'format': '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]',
+            'format': '%(asctime)s %(levelname)s %(name)s: %(message)s [in %(pathname)s:%(lineno)d]',
         },
     },
     'handlers': {
-        # Always active — writes to stdout in both dev and production
+        # Always active — writes to stdout, which is what `docker logs` reads
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'console',
             'level': 'DEBUG',
         },
-        # Production only — writes WARNING+ to file
-        'file': {
-            'class': 'logging.FileHandler',
-            'formatter': 'console',
-            'filters': ['require_debug_false'],
-            'level': 'WARNING',
-            'filename': 'debug.log',
-        },
+    },
+    # Catch-all for project apps and third-party libraries. Without it their
+    # records reach a handler-less root logger and are dropped silently.
+    'root': {
+        'handlers': ['console'],
+        'level': LOG_LEVEL,
     },
     'loggers': {
-        # Django internals
+        # Django internals — pinned to INFO so LOG_LEVEL=DEBUG does not flood
+        # the console with autoreload and template chatter
         'django': {
             'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
-        # SQL queries — INFO to avoid flooding in dev, switch to DEBUG when needed
+        # SQL queries — INFO to avoid flooding, switch to DEBUG when needed
         'django.db.backends': {
             'handlers': ['console'],
             'level': 'INFO',
-            'propagate': False,
-        },
-        # Email sending — useful to trace in both dev and production
-        'django.core.mail': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-        # Security events: admin brute-force, honeypot, invalid form attempts
-        'security': {
-            'handlers': ['console', 'file'],
-            'level': 'WARNING',
             'propagate': False,
         },
     },
@@ -233,10 +233,12 @@ LOGGING = {
 # REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'DEFAULT_PAGINATION_CLASS': 'core.pagination.StandardPagination',
     'EXCEPTION_HANDLER': 'core.exceptions.exception_handler',
-    'PAGE_SIZE': 20,
     'DEFAULT_AUTHENTICATION_CLASSES': ('rest_framework_simplejwt.authentication.JWTAuthentication',),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
 }
 
 # API documentation
@@ -247,8 +249,35 @@ SPECTACULAR_SETTINGS = {
 }
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=20),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'TOKEN_OBTAIN_SERIALIZER': 'accounts.serializers.token_obtain.EmailTokenObtainPairSerializer',
 }
 
 AUTH_USER_MODEL = 'accounts.User'
+
+# Celery
+CELERY_BROKER_URL = config('CELERY_BROKER_URL', default='redis://redis:6379/0')
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='redis://redis:6379/0')
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = True
+
+CELERY_BEAT_SCHEDULE = {
+    'ping-every-minute': {
+        'task': 'notifications.tasks.ping',
+        'schedule': 60.0,
+    },
+}
+
+# Настройки SMTP Yandex
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.yandex.ru')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 465))
+EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL', 'True') == 'True'
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'False') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)

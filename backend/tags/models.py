@@ -2,6 +2,8 @@ from django.contrib.auth import get_user_model
 from django.db import models
 from django.utils.timezone import now
 
+from core.models import SoftDeleteModel
+
 User = get_user_model()
 
 
@@ -10,12 +12,6 @@ class Tag(models.Model):
 
     name = models.CharField(
         verbose_name='Название тега', max_length=100, unique=True, help_text='Название тега должно быть уникальным.'
-    )
-    color_or_icon = models.CharField(
-        verbose_name='Цвет или иконка',
-        max_length=50,
-        blank=True,
-        help_text=('Цветовое обозначение (например, #FF0000)или идентификатор значка.'),
     )
 
     class Meta:
@@ -27,7 +23,7 @@ class Tag(models.Model):
         return self.name
 
 
-class EmployeeTag(models.Model):
+class EmployeeTag(SoftDeleteModel, models.Model):
     """
     Связующая модель для назначения тегов сотрудникам.
 
@@ -36,7 +32,7 @@ class EmployeeTag(models.Model):
 
     tag = models.ForeignKey(Tag, on_delete=models.CASCADE, related_name='employee_tags', verbose_name='Тег')
     employee = models.ForeignKey(
-        'accounts.User', on_delete=models.CASCADE, related_name='employee_tags', verbose_name=('Сотрудник')
+        'employees.Employee', on_delete=models.CASCADE, related_name='employee_tags', verbose_name=('Сотрудник')
     )
     assigned_by = models.ForeignKey(
         User,
@@ -45,9 +41,21 @@ class EmployeeTag(models.Model):
         blank=True,
         related_name='assigned_employee_tags',
         verbose_name='Кем назначен тег',
+        db_column='assigned_by_id',
     )
     assigned_at = models.DateTimeField(
         verbose_name='Когда назначен тег', default=now, help_text='Дата и время присвоения тега.'
+    )
+    removed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='removed_employee_tags',
+        verbose_name='Кем удален тег',
+    )
+    removed_at = models.DateTimeField(
+        verbose_name='Когда удален тег', null=True, blank=True, help_text='Дата и время удаления тега.'
     )
 
     class Meta:
@@ -59,4 +67,4 @@ class EmployeeTag(models.Model):
         ordering = ['-assigned_at']
 
     def __str__(self):
-        return f'{self.employee.username} - {self.tag.name}'
+        return f'{self.employee.full_name} - {self.tag.name}'

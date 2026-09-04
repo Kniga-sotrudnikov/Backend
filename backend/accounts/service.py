@@ -14,12 +14,16 @@ def generate_magic_token(user: AbstractBaseUser) -> str:
     """
     Генерирует одноразовый magic-link токен для пользователя.
 
+    Все ранее выпущенные токены пользователя удаляются, поэтому
+    действительным остаётся только последний.
+
     Args:
         user: Пользователь, для которого создаётся токен.
 
     Returns:
         Сырой magic-link токен.
     """
+    MagicLinkToken.objects.filter(user=user).delete()
     raw_token = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
     MagicLinkToken.objects.create(

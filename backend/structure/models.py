@@ -1,6 +1,9 @@
-from core.models import BaseModel, SoftDeleteModel
 from django.conf import settings
 from django.db import models
+from medias.validators import validate_file_size, validate_org_image_extension
+
+from core.models import BaseModel, SoftDeleteModel
+from core.storage import HashedFileStorage
 
 
 class Department(BaseModel, SoftDeleteModel):
@@ -46,6 +49,15 @@ class Department(BaseModel, SoftDeleteModel):
         verbose_name='Родительское подразделение',
     )
 
+    head = models.ForeignKey(
+        'employees.Employee',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='headed_departments',
+        verbose_name='Руководитель',
+    )
+
     display_order = models.IntegerField(default=DEFAULT_DISPLAY_ORDER, verbose_name='Порядок отображения')
 
     is_active = models.BooleanField(default=True, verbose_name='Активен')
@@ -76,3 +88,29 @@ class Department(BaseModel, SoftDeleteModel):
 
     def __str__(self):
         return self.name
+
+
+class OrgStructureImage(models.Model):
+    """Изображение организационной структуры (singleton)."""
+
+    image = models.ImageField(
+        storage=HashedFileStorage(),
+        upload_to='org-structure/',
+        validators=[validate_org_image_extension, validate_file_size],
+        verbose_name='Изображение',
+    )
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='Обновлено')
+
+    class Meta:
+        verbose_name = 'Изображение оргструктуры'
+        verbose_name_plural = 'Изображение оргструктуры'
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        try:
+            old = OrgStructureImage.objects.get(pk=1)
+            if old.image and old.image.name != self.image.name:
+                old.image.delete(save=False)
+        except OrgStructureImage.DoesNotExist:
+            pass
+        super().save(*args, **kwargs)

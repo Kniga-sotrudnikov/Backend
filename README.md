@@ -14,12 +14,14 @@ cp  .env.example  .env
 ```bash
 docker  compose  up  -d
 ```
+Поднимает все сервисы: web, postgres, redis, celery_worker, celery_beat.
 
 ### Применяем миграции и создаем суперпользователя:
 ```bash
 docker  compose  exec  -it  web  python  backend/manage.py  migrate
 docker  compose  exec  -it  web  python  backend/manage.py  createsuperuser
 ```
+> Примечание: команда migrate применяет в том числе миграции django_celery_beat (таблицы для периодических задач Celery).
 
 ### Доступ к приложению
 * Откройте http://localhost:8000/ в браузере
@@ -29,11 +31,11 @@ docker  compose  exec  -it  web  python  backend/manage.py  createsuperuser
 ```bash
 docker  compose  exec  -it  web  pip install <new_lib_name>
 ```
-###  Фиксируем новое окружение в файле для pip 
+###  Фиксируем новое окружение в файле для pip
 ```bash
 docker  compose  exec  -it  web pip freeze > ./requirements.txt
 ```
-###  Пересобираем образ приложения с новым окружением и перестартуем проект  
+###  Пересобираем образ приложения с новым окружением и перестартуем проект
 ```bash
 docker compose build web
 docker compose up -d
@@ -71,3 +73,76 @@ docker  compose  down  -v
 docker  compose  build  web
 docker  compose  up  -d
 ```
+
+
+## 🗂️ Тестовые данные
+
+### Запуск
+
+```bash
+# Идемпотентный прогон (дублей не создаёт)
+docker compose exec -it web python backend/manage.py seed_demo
+
+# Сбросить и пересоздать с нуля
+docker compose exec -it web python backend/manage.py seed_demo --flush
+```
+
+### Учётные записи
+
+| Роль | Email | Пароль |
+|---|---|---|
+| HR-admin | `hr1@demo.local` | `demo12345` |
+| HR-admin | `hr2@demo.local` | `demo12345` |
+| employee | `emp1@demo.local` | `demo12345` |
+| employee | `emp2@demo.local` | `demo12345` |
+| employee | `emp3@demo.local` | `demo12345` |
+| employee | `emp4@demo.local` | `demo12345` |
+| employee | `emp5@demo.local` | `demo12345` |
+
+### Что создаётся
+
+| Объект | Кол-во |
+|---|---|
+| HR-администраторы | 2 |
+| Пользователи-сотрудники | 5 |
+| Направления (`type=direction`) | 3 |
+| Отделы (`type=department`) | 9 |
+| Теги | 10 |
+| Карточки сотрудников | 18 (5 с привязанным user, 13 без) |
+
+### Оргструктура
+
+```
+Технологии и разработка
+  - Разработка ПО
+  - DevOps и инфраструктура
+  - QA и тестирование
+
+Маркетинг и продажи
+  - Цифровой маркетинг
+  - Отдел продаж
+  - Аналитика
+
+Операционная деятельность
+  - HR и кадры
+  - Финансы
+  - Административный отдел
+```
+
+### Использование фабрик в тестах
+
+```python
+from tests.factories.factories import (
+    UserFactory, HRAdminFactory,
+    DirectionFactory, DepartmentFactory,
+    EmployeeFactory, TagFactory,
+)
+
+direction  = DirectionFactory()
+department = DepartmentFactory(type="department", parent=direction)
+employee   = EmployeeFactory(department=department)
+hr_user    = HRAdminFactory()
+tag        = TagFactory(name="Python")
+```
+
+> Данные воспроизводимы: `Faker('ru_RU')` с фиксированным `seed=42`.
